@@ -28,34 +28,46 @@ function viejo(string $campo): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solicitud de Presupuesto - Elegancia a Medida</title>
     <style>
+        :root {
+            --color-fondo: #f8f4ef;
+            --color-encabezado: #231f20;
+            --color-boton: #b7898f;
+            --color-boton-hover: #695852;
+            --color-titulo: #231f20;
+            --color-borde: #bf9d5c;
+            --color-texto: #46413f;
+
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background: var(--color-fondo) ;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            color: #333;
+            color: var(--color-texto);
         }
         .container {
             background: #fff;
             border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border: 1px solid rgba(191, 157, 92, 0.15);
+            box-shadow: 0 20px 60px rgba(35,31,32,0.15);
             max-width: 560px;
             width: 100%;
             padding: 40px;
         }
         h1 {
             text-align: center;
-            color: #0f3460;
+            color: var(--color-titulo);
             margin-bottom: 8px;
             font-size: 1.75rem;
         }
         .subtitle {
             text-align: center;
-            color: #666;
+            color: var(--color-texto);
+            opacity: 0.85;
             margin-bottom: 30px;
             font-size: 0.95rem;
         }
@@ -64,7 +76,7 @@ function viejo(string $campo): string {
             display: block;
             font-weight: 600;
             margin-bottom: 6px;
-            color: #222;
+            color: var(--color-encabezado);
             font-size: 0.9rem;
         }
         label .required { color: #e74c3c; }
@@ -75,34 +87,36 @@ function viejo(string $campo): string {
         textarea {
             width: 100%;
             padding: 12px 14px;
-            border: 1px solid #ddd;
+            border: 1px solid rgba(191, 157, 92, 0.45);
             border-radius: 8px;
             font-size: 1rem;
+            color: var(--color-texto);
             transition: border-color 0.2s, box-shadow 0.2s;
             font-family: inherit;
         }
         input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: #0f3460;
-            box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.15);
+            border-color: var(--color-boton);
+            box-shadow: 0 0 0 3px rgba(183, 137, 143, 0.2);
         }
         textarea { min-height: 110px; resize: vertical; }
         .btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #0f3460, #1a1a2e);
+            background: var(--color-boton);
             color: #fff;
             border: none;
             border-radius: 8px;
             font-size: 1.05rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
             margin-top: 10px;
         }
         .btn:hover {
+            color: var(--color-boton-hover);
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(15, 52, 96, 0.35);
+            box-shadow: 0 8px 20px rgba(105, 88, 82, 0.35);
         }
         .btn:active { transform: translateY(0); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
@@ -123,7 +137,7 @@ function viejo(string $campo): string {
             border: 1px solid #c3e6cb;
         }
         .alert ul { margin: 8px 0 0 18px; }
-        .contador { font-size: 0.8rem; color: #888; text-align: right; margin-top: 4px; }
+        .contador { font-size: 0.8rem; color: var(--color-texto); opacity: 0.7; text-align: right; margin-top: 4px; }
     </style>
 </head>
 <body>
