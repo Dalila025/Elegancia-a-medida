@@ -29,3 +29,10 @@ const SERVICIOS_VALIDOS = [
     'Diseño personalizado',
     'Otro',
 ];
+// Estados de las solicitudes (columna estado de solicitudes_presupuesto)
+const ESTADOS = [
+    1 => 'Pendiente',
+    2 => 'En proceso',
+    3 => 'Completado',
+    4 => 'Cancelado',
+];

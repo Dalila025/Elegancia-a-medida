@@ -1,0 +1,380 @@
+/* =========================================================
+   Elegancia a Medida — Estilos del panel de la modista
+   ========================================================= */
+
+:root {
+    --bg: #faf7f4;
+    --surface: #ffffff;
+    --text: #2c2420;
+    --text-muted: #6b5e56;
+    --border: #e8dfd6;
+    --accent: #8b5e3c;
+    --accent-hover: #6f4a2f;
+    --gold: #c9a227;
+    --pendiente: #c47a2c;
+    --proceso: #2a6f97;
+    --completado: #2d6a4f;
+    --cancelado: #9b2226;
+    --shadow: 0 2px 12px rgba(44, 36, 32, 0.06);
+    --radius: 10px;
+    --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.container {
+    width: min(1180px, 94%);
+    margin-inline: auto;
+}
+
+/* ----- Header ----- */
+.header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: var(--shadow);
+}
+
+.header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.brand-mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.25rem;
+    display: grid;
+    place-items: center;
+}
+
+.brand h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* ----- Botones ----- */
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.9rem;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.btn-outline:hover {
+    border-color: var(--accent);
+    background: #f5efe9;
+    text-decoration: none;
+}
+
+.btn-primary {
+    padding: 0.5rem 1.1rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn-link {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-left: 0.4rem;
+}
+
+/* ----- Toolbar / filtros ----- */
+.toolbar {
+    margin: 1.5rem 0 0.75rem;
+}
+
+.filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filtros-estados {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.85rem;
+    transition: all 0.15s;
+}
+
+.chip:hover {
+    border-color: var(--accent);
+    text-decoration: none;
+}
+
+.chip.activo {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.chip .badge {
+    background: rgba(0, 0, 0, 0.12);
+    color: inherit;
+    font-size: 0.75rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    min-width: 1.4rem;
+    text-align: center;
+}
+
+.chip.activo .badge {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.busqueda {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.busqueda input[type="search"] {
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    min-width: 200px;
+    background: var(--surface);
+    color: var(--text);
+}
+
+.busqueda input[type="search"]:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    border-color: var(--accent);
+}
+
+/* ----- Resumen ----- */
+.resumen {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0.5rem 0 1rem;
+}
+
+.resumen strong {
+    color: var(--text);
+}
+
+/* ----- Tabla ----- */
+.tabla-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: auto;
+    margin-bottom: 2.5rem;
+}
+
+.tabla-solicitudes {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabla-solicitudes thead {
+    background: #f3ebe3;
+    position: sticky;
+    top: 0;
+}
+
+.tabla-solicitudes th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+}
+
+.tabla-solicitudes td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+.tabla-solicitudes tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.tabla-solicitudes tbody tr:hover {
+    background: #fdf9f5;
+}
+
+.tabla-solicitudes .id {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+.tabla-solicitudes .nombre {
+    font-weight: 600;
+}
+
+.tabla-solicitudes .telefono a {
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.tabla-solicitudes .descripcion {
+    max-width: 220px;
+    color: var(--text-muted);
+}
+
+.tabla-solicitudes .fecha {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+}
+
+/* ----- Badges de estado ----- */
+.estado-badge {
+    display: inline-block;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.estado-1 {
+    background: #fef3e2;
+    color: var(--pendiente);
+}
+
+.estado-2 {
+    background: #e8f4fb;
+    color: var(--proceso);
+}
+
+.estado-3 {
+    background: #e6f4ee;
+    color: var(--completado);
+}
+
+.estado-4 {
+    background: #fce8e8;
+    color: var(--cancelado);
+}
+
+/* ----- Vacío ----- */
+.vacio {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* ----- Footer ----- */
+.footer {
+    margin-top: auto;
+    padding: 1.25rem 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.footer p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* ----- Responsive ----- */
+@media (max-width: 720px) {
+    .filtros {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .busqueda {
+        flex-wrap: wrap;
+    }
+
+    .busqueda input[type="search"] {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .tabla-solicitudes th,
+    .tabla-solicitudes td {
+        padding: 0.65rem 0.75rem;
+    }
+}
