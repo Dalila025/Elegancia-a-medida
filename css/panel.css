@@ -1,0 +1,142 @@
+/* ==========================================================
+   Panel de la modista — estilos agregados
+   Complementa css/modista.css (no lo reemplaza).
+   ========================================================== */
+
+:root {
+    --p-fondo: #f8f4ef;
+    --p-oscuro: #231f20;
+    --p-rosa: #b7898f;
+    --p-marron: #695852;
+    --p-dorado: #bf9d5c;
+    --p-texto: #46413f;
+}
+
+/* ---------- Navegación del encabezado ---------- */
+.nav-panel { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.nav-panel a.activo { background: var(--p-rosa); color: #fff; border-color: var(--p-rosa); }
+
+/* ---------- Filtro por tipo de servicio ---------- */
+/* Mismo alto y borde que el buscador, con flecha propia para que se vea igual en todos los navegadores. */
+.filtro-servicio {
+    appearance: none; -webkit-appearance: none;
+    padding: 0.5rem 2.2rem 0.5rem 0.9rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    background-color: var(--surface);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b5e56' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.8rem center;
+    color: var(--text); font-size: 0.9rem; font-family: inherit; line-height: 1.5;
+    min-width: 180px; cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+.filtro-servicio:hover { border-color: var(--accent); }
+.filtro-servicio:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    border-color: var(--accent);
+}
+/* Con un servicio elegido se resalta, igual que el chip de estado activo, para que se note que hay un filtro aplicado. */
+.filtro-servicio.activo {
+    border-color: var(--p-rosa); background-color: #f7eef0;
+    color: var(--p-oscuro); font-weight: 600;
+}
+
+@media (max-width: 720px) {
+    .filtro-servicio { flex: 1 1 100%; min-width: 0; }
+}
+
+/* ---------- Mensajes ---------- */
+.flash { padding: 12px 16px; border-radius: 8px; margin: 16px 0; font-size: 0.95rem; }
+.flash-ok    { background: #e8f8f0; color: #1e7e34; border: 1px solid #c3e6cb; }
+.flash-error { background: #fdecea; color: #c0392b; border: 1px solid #f5c6cb; }
+.flash ul { margin: 6px 0 0 18px; }
+.aviso { padding: 10px 14px; border-radius: 8px; background: #fff7e6; color: #8a5a00;
+         border: 1px solid #f0d9a8; font-size: 0.9rem; margin: 10px 0; }
+
+/* ---------- Botones de estado en la tabla ---------- */
+.acciones { display: flex; flex-wrap: wrap; gap: 6px; }
+.acciones form { margin: 0; }
+.btn-accion {
+    display: inline-block; border: 1px solid transparent; border-radius: 6px;
+    padding: 5px 10px; font-size: 0.8rem; font-weight: 600; text-decoration: none;
+    cursor: pointer; font-family: inherit; white-space: nowrap; line-height: 1.3;
+}
+.btn-accion:hover { filter: brightness(0.93); }
+.accion-presupuestar { background: #fbf3e6; color: #7a5a1e; border-color: #e6cf9f; }
+.accion-2 { background: #e8f8f0; color: #1e7e34; border-color: #c3e6cb; }  /* → En proceso   */
+.accion-3 { background: #e7f0fb; color: #1f5fa8; border-color: #bcd4f0; }  /* → Completado   */
+.accion-4,
+.accion-5 { background: #fdecea; color: #c0392b; border-color: #f5c6cb; }  /* → Cancelado / Rechazado */
+.accion-1 { background: var(--p-fondo); color: var(--p-marron); border-color: #d9c8a8; } /* Reabrir */
+.sin-acciones { font-size: 0.8rem; opacity: 0.6; }
+
+/* Colores de los estados nuevos (5 y 6) */
+.estado-badge.estado-5 { background: #f3e1e3; color: #8e3b46; }
+.estado-badge.estado-6 { background: #fbf3e6; color: #7a5a1e; }
+
+/* Columna de presupuesto en la tabla */
+.presu-celda { font-size: 0.85rem; line-height: 1.4; white-space: nowrap; }
+.presu-celda strong { color: var(--p-oscuro); }
+.presu-celda .tarde { color: #c0392b; font-weight: 600; }
+
+/* ---------- Tarjetas y formularios del panel ---------- */
+.tarjeta {
+    background: #fff; border: 1px solid rgba(191,157,92,0.25); border-radius: 12px;
+    padding: 24px; margin: 20px 0; box-shadow: 0 6px 20px rgba(35,31,32,0.06);
+}
+.tarjeta h2 { font-size: 1.15rem; color: var(--p-oscuro); margin: 0 0 14px; }
+.datos-solicitud { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 0.95rem; }
+.datos-solicitud dt { font-weight: 600; color: var(--p-oscuro); }
+.datos-solicitud dd { margin: 0; white-space: pre-line; }
+
+.form-panel .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-panel .campo { margin-bottom: 16px; }
+.form-panel label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; color: var(--p-oscuro); }
+.form-panel input[type="text"],
+.form-panel input[type="number"],
+.form-panel input[type="date"],
+.form-panel textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid rgba(191,157,92,0.5);
+    border-radius: 8px; font-size: 1rem; font-family: inherit; color: var(--p-texto);
+    box-sizing: border-box; background: #fff;
+}
+.form-panel input:focus, .form-panel textarea:focus {
+    outline: none; border-color: var(--p-rosa); box-shadow: 0 0 0 3px rgba(183,137,143,0.2);
+}
+.form-panel .ayuda { font-size: 0.8rem; opacity: 0.75; margin-top: 4px; }
+.botonera { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.btn-guardar {
+    background: var(--p-rosa); color: #fff; border: none; border-radius: 8px;
+    padding: 12px 22px; font-size: 1rem; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.btn-guardar:hover { background: var(--p-marron); }
+.btn-secundario {
+    background: #fff; color: var(--p-marron); border: 1px solid #d9c8a8; border-radius: 8px;
+    padding: 8px 14px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; font-family: inherit;
+}
+.btn-peligro { color: #c0392b; border-color: #f5c6cb; }
+
+/* Resumen del cálculo en vivo */
+.calculo {
+    background: var(--p-fondo); border: 1px dashed var(--p-dorado); border-radius: 10px;
+    padding: 14px 16px; margin: 6px 0 18px; font-size: 0.95rem;
+}
+.calculo .linea { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.calculo .total { border-top: 1px solid rgba(191,157,92,0.5); margin-top: 6px; padding-top: 8px;
+                  font-size: 1.1rem; font-weight: 700; color: var(--p-oscuro); }
+
+/* Tabla de tarifas */
+.tabla-tarifas { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.tabla-tarifas th, .tabla-tarifas td { padding: 8px 6px; border-bottom: 1px solid #eee3d3; text-align: left; vertical-align: middle; }
+.tabla-tarifas input[type="text"], .tabla-tarifas input[type="number"] {
+    width: 100%; padding: 7px 8px; border: 1px solid rgba(191,157,92,0.5); border-radius: 6px;
+    font-family: inherit; font-size: 0.92rem; box-sizing: border-box;
+}
+.tabla-tarifas .rango { font-size: 0.82rem; opacity: 0.8; white-space: nowrap; }
+
+@media (max-width: 640px) {
+    .form-panel .fila { grid-template-columns: 1fr; }
+    .datos-solicitud { grid-template-columns: 1fr; }
+    .tabla-tarifas thead { display: none; }
+    .tabla-tarifas tr { display: block; border-bottom: 1px solid #eee3d3; padding: 8px 0; }
+    .tabla-tarifas td { display: block; border: none; padding: 4px 0; }
+}
