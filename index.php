@@ -1,8 +1,18 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/funciones.php';
 
 // La sesión debe iniciarse antes de cualquier salida HTML.
 session_start();
+
+// Los tipos de servicio se leen de la tabla tipos_servicio.
+require_once __DIR__ . '/conexion.php';
+try {
+    $tipos_servicio = obtener_tipos_servicio($pdo);
+} catch (PDOException $e) {
+    error_log('Error al leer tipos_servicio: ' . $e->getMessage());
+    $tipos_servicio = [];
+}
 
 // Token de un solo uso: evita el reenvío duplicado del formulario
 // y valida que el POST provenga de esta misma página. (Corrige P07)
@@ -10,11 +20,6 @@ if (empty($_SESSION['token_formulario'])) {
     $_SESSION['token_formulario'] = bin2hex(random_bytes(32));
 }
 $token = $_SESSION['token_formulario'];
-
-// Atajo para escapar salida. (Corrige P02)
-function e(?string $valor): string {
-    return htmlspecialchars((string) $valor, ENT_QUOTES, 'UTF-8');
-}
 
 // Valor previo del formulario cuando se vuelve con errores.
 function viejo(string $campo): string {
@@ -186,17 +191,17 @@ function viejo(string $campo): string {
             </div>
 
             <div class="form-group">
-                <label for="tipo_servicio">Tipo de servicio <span class="required">*</span></label>
-                <select id="tipo_servicio" name="tipo_servicio" required>
+                <label for="id_tipos_servicio">Tipo de servicio <span class="required">*</span></label>
+                <select id="id_tipos_servicio" name="id_tipos_servicio" required>
                     <option value="">— Seleccione —</option>
                     <?php
-                    // La lista ahora viene de config.php: una sola fuente de verdad.
-                    $sel = isset($_GET['tipo_servicio']) && is_string($_GET['tipo_servicio'])
-                        ? $_GET['tipo_servicio']
-                        : '';
-                    foreach (SERVICIOS_VALIDOS as $s) {
-                        $selected = ($sel === $s) ? ' selected' : '';
-                        echo '<option value="' . e($s) . '"' . $selected . '>' . e($s) . '</option>';
+                    // La lista viene de la tabla tipos_servicio: una sola fuente de verdad.
+                    $sel = isset($_GET['id_tipos_servicio']) && is_string($_GET['id_tipos_servicio'])
+                        ? (int) $_GET['id_tipos_servicio']
+                        : 0;
+                    foreach ($tipos_servicio as $id_tipo => $nombre_tipo) {
+                        $selected = ($sel === $id_tipo) ? ' selected' : '';
+                        echo '<option value="' . $id_tipo . '"' . $selected . '>' . e($nombre_tipo) . '</option>';
                     }
                     ?>
                 </select>
@@ -221,7 +226,11 @@ function viejo(string $campo): string {
                 <label for="fecha_requerida">Fecha requerida <span class="required">*</span></label>
                 <input type="date" id="fecha_requerida" name="fecha_requerida"
                        value="<?= viejo('fecha_requerida') ?>"
-                       required min="<?= date('Y-m-d') ?>">
+                       required min="<?= date('Y-m-d') ?>"
+                       max="<?= fecha_maxima()->format('Y-m-d') ?>">
+                <div class="contador">
+                    Hasta el <?= fecha_maxima()->format('d/m/Y') ?> (<?= FECHA_MAX_DIAS ?> días desde hoy)
+                </div>
             </div>
 
             <button type="submit" class="btn" id="btnEnviar">Enviar solicitud de presupuesto</button>

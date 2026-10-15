@@ -24,6 +24,9 @@ $opciones = [
 
 try {
     $pdo = new PDO($dsn, $usuario, $clave, $opciones);
+    // Misma zona horaria que PHP (config.php): así fecha_solicitud y CURDATE()
+    // coinciden con la hora argentina aunque el servidor MySQL esté en otra zona.
+    $pdo->exec("SET time_zone = '-03:00'");
 } catch (PDOException $e) {
     // El detalle va al log del servidor, no a la pantalla del usuario.
     error_log('Error de conexión a la base de datos: ' . $e->getMessage());

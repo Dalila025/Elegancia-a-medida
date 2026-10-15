@@ -12,11 +12,14 @@ declare(strict_types=1);
  *  P04 — zona horaria definida en config.php (compartida con index.php)
  *  P06 — límite máximo de caracteres en la descripción
  *  P07 — token de un solo uso contra el reenvío duplicado
+ *
+ * Agregado: límite máximo para fecha_requerida (FECHA_MAX_DIAS en config.php).
  */
 
 session_start();
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/funciones.php';
 
 // Solo se acepta POST.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -59,7 +62,7 @@ function volver_con(array $errores, array $datos): void
 
 $nombre          = campo('nombre');
 $telefono        = campo('telefono');
-$tipo_servicio   = campo('tipo_servicio');
+$id_tipos_servicio = campo('id_tipos_servicio');
 $tipo_prenda     = campo('tipo_prenda');
 $descripcion     = campo('descripcion');
 $fecha_requerida = campo('fecha_requerida');
@@ -67,7 +70,7 @@ $fecha_requerida = campo('fecha_requerida');
 $datos = [
     'nombre'          => $nombre,
     'telefono'        => $telefono,
-    'tipo_servicio'   => $tipo_servicio,
+    'id_tipos_servicio' => $id_tipos_servicio,
     'tipo_prenda'     => $tipo_prenda,
     'descripcion'     => $descripcion,
     'fecha_requerida' => $fecha_requerida,
@@ -151,11 +154,13 @@ if ($telefono === '') {
 
 // ---------- TIPO DE SERVICIO ----------
 
-if ($tipo_servicio === '') {
+// Se valida contra la tabla tipos_servicio (solo los activos).
+if ($id_tipos_servicio === '') {
 
     $errores[] = 'Debe seleccionar un tipo de servicio.';
 
-} elseif (!in_array($tipo_servicio, SERVICIOS_VALIDOS, true)) {
+} elseif (!ctype_digit($id_tipos_servicio)
+          || !array_key_exists((int) $id_tipos_servicio, obtener_tipos_servicio($pdo))) {
 
     $errores[] = 'El tipo de servicio seleccionado no es válido.';
 }
@@ -207,6 +212,11 @@ if ($fecha_requerida === '') {
     } elseif ($fecha < $hoy) {
 
         $errores[] = 'La fecha requerida no puede ser anterior a hoy.';
+
+    } elseif ($fecha > fecha_maxima()) {
+
+        $errores[] = 'La fecha requerida no puede superar los ' . FECHA_MAX_DIAS
+            . ' días (máximo ' . fecha_maxima()->format('d/m/Y') . ').';
     }
 }
 
@@ -231,21 +241,21 @@ try {
         (
             nombre,
             telefono,
-            tipo_servicio,
+            id_tipos_servicio,
             tipo_prenda,
             descripcion,
             fecha_requerida,
-            estado
+            id_estados_solicitud
         )
         VALUES
         (
             :nombre,
             :telefono,
-            :tipo_servicio,
+            :id_tipos_servicio,
             :tipo_prenda,
             :descripcion,
             :fecha_requerida,
-            1
+            :id_estados_solicitud
         )
     ";
 
@@ -254,10 +264,11 @@ try {
     $stmt->execute([
         ':nombre'          => $nombre,
         ':telefono'        => $telefono,
-        ':tipo_servicio'   => $tipo_servicio,
+        ':id_tipos_servicio' => (int) $id_tipos_servicio,
         ':tipo_prenda'     => $tipo_prenda,
         ':descripcion'     => $descripcion,
         ':fecha_requerida' => $fecha_requerida,
+        ':id_estados_solicitud' => ESTADO_PENDIENTE,
     ]);
 
     // El token se consume: un segundo envío del mismo formulario no inserta de nuevo.
