@@ -222,7 +222,7 @@ $pagina_actual = 'solicitudes';
 
     <footer class="footer">
         <div class="container">
-            <p>Elegancia a Medida · Panel de gestión (sin autenticación) · Ciclo 2026</p>
+            <p>Elegancia a Medida · Panel de gestión · Ciclo 2026</p>
         </div>
     </footer>
 

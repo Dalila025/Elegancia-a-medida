@@ -936,3 +936,16 @@ svg { flex-shrink: 0; }
         scroll-behavior: auto !important;
     }
 }
+/* ---------- Sesión de la modista (encabezado_modista.php) ----------
+   modista.php no carga panel.css: sin estas reglas el botón "Salir"
+   se veía como un botón del navegador sin estilo. */
+.usuario-sesion { display: flex; align-items: center; gap: 8px; }
+.usuario-avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%;
+                  background: var(--rosa-suave); color: var(--rosa-osc); font-weight: 600; font-size: .85rem; }
+.usuario-nombre { font-size: .88rem; font-weight: 500; color: var(--negro); }
+.form-salir { margin: 0; }
+.btn-salir { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--borde-fuerte);
+             border-radius: 999px; background: var(--superficie); color: var(--marron); font: inherit; font-size: .85rem; cursor: pointer; }
+.btn-salir svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.btn-salir:hover { color: #c0392b; border-color: #f5c6cb; background: #fdecea; }
+@media (max-width: 640px) { .usuario-nombre, .btn-salir span { display: none; } }
