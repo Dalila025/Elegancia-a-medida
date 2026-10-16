@@ -15,12 +15,13 @@ Proyecto de Prácticas Profesionalizantes II – Grupo 2 · Ciclo 2026
 
 Un token de un solo uso en sesión evita registrar dos veces la misma solicitud.
 
-**Modista** (`modista.php`):
+**Modista** (`modista.php`, requiere iniciar sesión en `login.php`):
 
-1. Ve las solicitudes y puede filtrarlas por estado o buscarlas por nombre.
-2. **Presupuestar**: elige la fecha de entrega (o el plazo en días) y el monto base. Según el plazo se aplica el recargo de la tabla de tarifas y se ve el total en vivo. La solicitud pasa a *Presupuestado*.
-3. Cambia el estado: *Cliente aceptó* → En proceso → *Completar*; o *Rechazar*, *Cliente no aceptó*, *Cancelar* y *Reabrir*.
-4. **Tarifas por plazo** (`tarifas.php`): define cuánto se recarga según los días hasta la entrega (por ejemplo, Urgente ≤ 7 días +40 %).
+1. Ingresa con su email y contraseña. Tras 5 intentos fallidos debe esperar 60 segundos; la sesión vence tras 2 horas sin actividad.
+2. Ve las solicitudes y puede filtrarlas por estado o buscarlas por nombre.
+3. **Presupuestar**: elige la fecha de entrega (o el plazo en días) y el monto base. Según el plazo se aplica el recargo de la tabla de tarifas y se ve el total en vivo. La solicitud pasa a *Presupuestado*.
+4. Cambia el estado: *Cliente aceptó* → En proceso → *Completar*; o *Rechazar*, *Cliente no aceptó*, *Cancelar* y *Reabrir*.
+5. **Tarifas por plazo** (`tarifas.php`): define cuánto se recarga según los días hasta la entrega (por ejemplo, Urgente ≤ 7 días +40 %).
 
 ## Tecnologías
 
@@ -41,6 +42,9 @@ Un token de un solo uso en sesión evita registrar dos veces la misma solicitud.
 | `actualizar_estado.php` | Cambia el estado si la transición está permitida |
 | `tarifas.php` / `guardar_tarifa.php` | Alta, modificación y baja de tarifas por plazo |
 | `encabezado_modista.php` | Menú común del panel |
+| `login.php` / `logout.php` | Ingreso y salida de la modista |
+| `auth.php` | Control de acceso: `requerir_login()`, verificación de clave y vencimiento de sesión |
+| `crear_usuario.php` | Alta de la usuaria del panel (solo por terminal) |
 | `config.php` | Zona horaria, límites, estados y transiciones |
 | `funciones.php` | Funciones compartidas (escape, cálculo, tokens) |
 | `css/panel.css` | Estilos del panel agregados (complementa `css/modista.css`) |
@@ -64,12 +68,18 @@ Un token de un solo uso en sesión evita registrar dos veces la misma solicitud.
    ```
 3. Abrir http://localhost/phpmyadmin, pestaña **Importar**, y cargar `elegancia_a_medida.sql`. El script crea la base y todas las tablas. **Si ya existían, las borra.**
 4. Copiar `conexion.example.php` como `conexion.php` y completar usuario y clave (en XAMPP: `root` y clave vacía). No subir `conexion.php` al repositorio.
-5. Abrir http://localhost/elegancia_a_medida/index.php (clientes) y http://localhost/elegancia_a_medida/modista.php (modista).
+5. Crear la usuaria del panel (el script SQL no trae ninguna). Desde la carpeta del proyecto:
+   ```
+   C:\xampp\php\php.exe crear_usuario.php "Nombre Apellido" email@ejemplo.com
+   ```
+   Pide la contraseña (mínimo 8 caracteres) y la guarda con `password_hash()`.
+6. Abrir http://localhost/elegancia_a_medida/index.php (clientes) y http://localhost/elegancia_a_medida/login.php (modista).
 
 ## Prueba rápida
 
 - **Caso válido:** completar el formulario y enviar. Debe aparecer `?ok=1` y una fila nueva con `id_estados_solicitud = 1`.
 - **Caso inválido:** teléfono `abc123`. Aparece un error y no se agrega ninguna fila.
+- **Login:** con una contraseña incorrecta aparece "Email o contraseña incorrectos"; con la correcta se entra al panel. Sin sesión, `modista.php`, `presupuesto.php` y `tarifas.php` redirigen a `login.php`.
 - **Presupuesto:** en el panel, *Presupuestar* una solicitud con entrega en 5 días y monto 10000. Con las tarifas iniciales, el total debe ser $ 14.000 (Urgente +40 %) y la solicitud debe pasar a *Presupuestado*.
 
 ## Estado actual
@@ -82,10 +92,10 @@ Un token de un solo uso en sesión evita registrar dos veces la misma solicitud.
 - Fecha requerida limitada a 180 días (`FECHA_MAX_DIAS`)
 - Panel de la modista con filtros y cambio de estado
 - Presupuesto con fecha de entrega, plazo y recargo según tarifas definidas por la modista
+- Login de la modista (contraseñas con `password_hash`, bloqueo tras 5 intentos, sesión con vencimiento) que protege todas las páginas del panel
 
 **Limitaciones y pendientes**
 
-- El panel de la modista no tiene login: cualquiera con la URL puede verlo y modificarlo. La tabla `usuarios` ya está creada para esa etapa.
 - El presupuesto se le comunica al cliente por fuera del sistema (teléfono / WhatsApp).
 - Catálogo, contacto, alquileres y pagos tienen sus tablas creadas pero no tienen código (ver `BASE_DE_DATOS.md`).
 
