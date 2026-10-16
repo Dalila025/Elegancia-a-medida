@@ -77,6 +77,7 @@ function verificar_credenciales(PDO $pdo, string $email, string $clave): ?array
         'SELECT id_usuarios, nombre, email, clave_hash, rol
            FROM usuarios
           WHERE email = :email
+            AND activo = 1
           LIMIT 1'
     );
     $stmt->execute([':email' => $email]);

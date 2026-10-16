@@ -16,6 +16,8 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
 
 session_start();
+require_once __DIR__ . '/auth.php';
+requerir_login();   // solo la modista con sesión iniciada
 $token = token_modista();
 
 require_once __DIR__ . '/conexion.php';

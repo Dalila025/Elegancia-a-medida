@@ -38,7 +38,7 @@ if (empty($_SESSION['token_login'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $email = isset($_POST['email']) && is_string($_POST['email']) ? trim($_POST['email']) : '';
-    $clave = isset($_POST['clave']) && is_string($_POST['clave']) ? $_POST['clave'] : '';
+    $clave_ingresada = isset($_POST['clave']) && is_string($_POST['clave']) ? $_POST['clave'] : '';
     $token = isset($_POST['token']) && is_string($_POST['token']) ? $_POST['token'] : '';
 
     $bloqueo = (int) ($_SESSION['login_bloqueo_hasta'] ?? 0);
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $error = 'Demasiados intentos. Esperá ' . ($bloqueo - time()) . ' segundos y volvé a intentar.';
 
-    } elseif ($email === '' || $clave === '') {
+    } elseif ($email === '' || $clave_ingresada === '') {
 
         $error = 'Completá el email y la contraseña.';
 
@@ -63,8 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         require_once __DIR__ . '/conexion.php';
 
+        // conexion.php define $usuario y $clave (credenciales de MySQL): por eso la
+        // contraseña ingresada se guarda en $clave_ingresada y no se pisa.
         try {
-            $usuario = verificar_credenciales($pdo, $email, $clave);
+            $usuario = verificar_credenciales($pdo, $email, $clave_ingresada);
         } catch (PDOException $e) {
             error_log('Error en login: ' . $e->getMessage());
             $usuario = null;
