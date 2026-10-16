@@ -14,6 +14,18 @@ declare(strict_types=1);
 // Una sola zona horaria para toda la aplicación.
 date_default_timezone_set('America/Argentina/Buenos_Aires');
 
+// =====================================================
+// COOKIE DE SESIÓN (login de la modista)
+// Solo tiene efecto si config.php se incluye ANTES de session_start().
+// =====================================================
+ 
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.use_strict_mode', '1');    // no acepta IDs de sesión inventados
+    ini_set('session.use_only_cookies', '1');   // el ID nunca viaja en la URL
+    ini_set('session.cookie_httponly', '1');    // JavaScript no puede leer la cookie
+    ini_set('session.cookie_samesite', 'Lax');  // otros sitios no pueden usar la sesión en un POST
+}
+
 
 // =====================================================
 // FORMULARIO DEL CLIENTE (tabla solicitudes_presupuesto)

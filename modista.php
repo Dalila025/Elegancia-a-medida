@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Lista las solicitudes de presupuesto, permite filtrarlas (por estado,
  * por tipo de servicio y por nombre), cargar el
  * presupuesto (fecha de entrega, plazo y monto) y cambiar su estado.
- * Sin autenticación (pendiente para etapas posteriores).
+ * Requiere sesión iniciada (auth.php → login.php).
  *
  * Tablas: solicitudes_presupuesto, tipos_servicio, estados_solicitud,
  *         presupuestos.
@@ -17,6 +17,9 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
 
 session_start();
+
+require_once __DIR__ . '/auth.php';
+requerir_login();   // solo la modista con sesión iniciada
 
 $token = token_modista();
 $flash = tomar_flash();
@@ -434,7 +437,7 @@ function iniciales(string $nombre): string
 
     <footer class="footer">
         <div class="container">
-            <p>Elegancia a Medida · Panel de gestión (sin autenticación) · Ciclo 2026</p>
+            <p>Elegancia a Medida · Panel de gestión · Ciclo 2026</p>
         </div>
     </footer>
 
@@ -474,6 +477,6 @@ function iniciales(string $nombre): string
     </dialog>
 
     <script src="js/modista.js"></script>
-    <script src="js/panel_solicitudes.js"></script>
+    <script src="js/panel-solicitudes.js"></script>
 </body>
 </html>

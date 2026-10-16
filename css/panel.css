@@ -140,3 +140,15 @@
     .tabla-tarifas tr { display: block; border-bottom: 1px solid #eee3d3; padding: 8px 0; }
     .tabla-tarifas td { display: block; border: none; padding: 4px 0; }
 }
+
+/* ---------- Usuaria con sesión iniciada (encabezado de tarifas / presupuesto) ---------- */
+.usuario-sesion { display: flex; align-items: center; gap: 8px; }
+.usuario-avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%;
+                  background: #f6ecee; color: var(--p-marron); font-weight: 600; font-size: .85rem; }
+.usuario-nombre { font-size: .88rem; font-weight: 500; color: var(--p-oscuro); }
+.form-salir { margin: 0; }
+.btn-salir { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #d9c8a8;
+             border-radius: 999px; background: #fff; color: var(--p-marron); font: inherit; font-size: .85rem; cursor: pointer; }
+.btn-salir svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.btn-salir:hover { color: #c0392b; border-color: #f5c6cb; background: #fdecea; }
+@media (max-width: 640px) { .usuario-nombre, .btn-salir span { display: none; } }

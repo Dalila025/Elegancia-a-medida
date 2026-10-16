@@ -14,6 +14,8 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
 
 session_start();
+require_once __DIR__ . '/auth.php';
+requerir_login();   // solo la modista con sesión iniciada
 $token = token_modista();
 $flash = tomar_flash();
 
@@ -145,7 +147,7 @@ $pagina_actual = 'tarifas';
 
     <footer class="footer">
         <div class="container">
-            <p>Elegancia a Medida · Panel de gestión (sin autenticación) · Ciclo 2026</p>
+            <p>Elegancia a Medida · Panel de gestión · Ciclo 2026</p>
         </div>
     </footer>
 </body>

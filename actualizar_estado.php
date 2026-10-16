@@ -10,10 +10,13 @@ declare(strict_types=1);
  * solicitudes_presupuesto.id_estados_solicitud y vuelve al panel.
  */
 
-session_start();
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
+session_start();
+
+require_once __DIR__ . '/auth.php';
+requerir_login();   // solo la modista con sesión iniciada
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
