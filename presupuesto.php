@@ -15,12 +15,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
 
-session_start();
-require_once __DIR__ . '/auth.php';
-requerir_login();   // solo la modista con sesión iniciada
+iniciar_sesion();
 $token = token_modista();
 
 require_once __DIR__ . '/conexion.php';
+
+// Solo la modista con sesión iniciada (panel_login.php).
+$usuario = requerir_modista($pdo);
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 if (!$id) {
@@ -31,9 +32,10 @@ if (!$id) {
 
 try {
     $stmt = $pdo->prepare(
-        'SELECT s.*, t.nombre AS servicio
+        'SELECT s.*, t.nombre AS servicio, pr.nombre AS producto_ref
            FROM solicitudes_presupuesto s
            INNER JOIN tipos_servicio t ON t.id_tipos_servicio = s.id_tipos_servicio
+           LEFT JOIN productos pr ON pr.id_productos = s.id_productos
           WHERE s.id_solicitudes_presupuesto = :id'
     );
     $stmt->execute([':id' => $id]);
@@ -121,11 +123,12 @@ $pagina_actual = 'solicitudes';
             <dl class="datos-solicitud">
                 <dt>Teléfono</dt>   <dd><a href="tel:<?= e(preg_replace('/[^\d+]/', '', $sol['telefono'])) ?>"><?= e($sol['telefono']) ?></a></dd>
                 <dt>Servicio</dt>   <dd><?= e($sol['servicio']) ?></dd>
-                <dt>Prenda</dt>     <dd><?= e($sol['tipo_prenda']) ?></dd>
+                <dt>Prenda</dt>     <dd><?= e($sol['tipo_prenda']) ?><?php if ($sol['producto_ref'] !== null): ?> <span class="ref-catalogo">Referencia del catálogo: <a href="producto.php?id=<?= (int) $sol['id_productos'] ?>"><?= e($sol['producto_ref']) ?></a></span><?php endif; ?></dd>
                 <dt>Descripción</dt><dd><?= e($sol['descripcion']) ?></dd>
                 <dt>Lo pide para</dt>
                 <dd><?= $fecha_req->format('d/m/Y') ?> (<?= $dias_req < 0 ? 'hace ' . abs($dias_req) . ' días' : ($dias_req === 0 ? 'hoy' : "en $dias_req días") ?>)</dd>
                 <dt>Estado</dt>     <dd><?= e(ESTADOS[$estado]) ?></dd>
+                <dt>Código</dt>     <dd><?= e(formatear_codigo($sol['codigo_seguimiento'])) ?> <small>(el cliente lo usa en seguimiento.php)</small></dd>
             </dl>
         </section>
 
@@ -222,7 +225,7 @@ $pagina_actual = 'solicitudes';
 
     <footer class="footer">
         <div class="container">
-            <p>Elegancia a Medida · Panel de gestión · Ciclo 2026</p>
+            <p>Elegancia a Medida · Panel de gestión (sin autenticación) · Ciclo 2026</p>
         </div>
     </footer>
 

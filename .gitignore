@@ -2,3 +2,8 @@ conexion.php
 *.log
 Thumbs.db
 .DS_Store
+# Fotos subidas desde el panel (no van al repositorio)
+img/productos/prod_*
+img/banners/banner_*
+img/sitio/logo_*
+.vscode/

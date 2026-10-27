@@ -10,11 +10,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
-
-session_start();
-
-require_once __DIR__ . '/auth.php';
-requerir_login();   // solo la modista con sesión iniciada
+iniciar_sesion();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -22,6 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once __DIR__ . '/conexion.php';
+
+// Solo la modista con sesión iniciada (panel_login.php).
+$usuario = requerir_modista($pdo);
 
 
 function volver(string $tipo, string $mensaje): void

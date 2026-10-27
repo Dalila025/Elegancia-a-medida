@@ -1,0 +1,5 @@
+# Esta carpeta solo guarda fotos: Apache nunca ejecuta código acá.
+<FilesMatch "\.(php|phtml|php\d|phar|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>
+Options -Indexes

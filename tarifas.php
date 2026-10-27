@@ -13,13 +13,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
 
-session_start();
-require_once __DIR__ . '/auth.php';
-requerir_login();   // solo la modista con sesión iniciada
+iniciar_sesion();
 $token = token_modista();
 $flash = tomar_flash();
 
 require_once __DIR__ . '/conexion.php';
+
+// Solo la modista con sesión iniciada (panel_login.php).
+$usuario = requerir_modista($pdo);
 
 try {
     $tarifas = obtener_tarifas($pdo);
@@ -147,7 +148,7 @@ $pagina_actual = 'tarifas';
 
     <footer class="footer">
         <div class="container">
-            <p>Elegancia a Medida · Panel de gestión · Ciclo 2026</p>
+            <p>Elegancia a Medida · Panel de gestión (sin autenticación) · Ciclo 2026</p>
         </div>
     </footer>
 </body>

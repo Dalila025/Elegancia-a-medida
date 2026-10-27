@@ -1,252 +1,183 @@
 <?php
+declare(strict_types=1);
+
+/**
+ * Inicio — Elegancia a Medida
+ *
+ *   1. Carrusel de pantallas grandes (Bienvenidos, Venta, Alquiler, Accesorios…)
+ *   2. Mosaico (Venta / Alquiler / Accesorios)
+ *   3. Ofertas y Temporada (filas que se deslizan)
+ *   4. Novedades (últimas prendas) → "Ver toda la tienda"
+ *   5. Nuestra historia y Contacto
+ * Carrusel y mosaico salen de la tabla banners (panel → Portada).
+ *
+ * Tablas: banners, productos, categorias, tipos_producto, datos_sitio.
+ */
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
-
-// La sesión debe iniciarse antes de cualquier salida HTML.
-session_start();
-
-// Los tipos de servicio se leen de la tabla tipos_servicio.
+require_once __DIR__ . '/tarjeta_producto.php';
+iniciar_sesion();
 require_once __DIR__ . '/conexion.php';
+
+$cliente = cliente_logueado($pdo);
+$flash   = tomar_flash_cliente();
+$sitio   = datos_sitio($pdo);
+
 try {
-    $tipos_servicio = obtener_tipos_servicio($pdo);
+    $carrusel = obtener_banners($pdo, 'carrusel');
+    $mosaico  = obtener_banners($pdo, 'mosaico');
+    $ofertas  = $pdo->query(SQL_PRODUCTOS_VISIBLES . ' AND ' . sql_oferta_vigente()
+        . ' ORDER BY p.descuento_porcentaje DESC, p.nombre LIMIT ' . INICIO_MAX_OFERTAS)->fetchAll();
+    $temporada = $pdo->query(SQL_PRODUCTOS_VISIBLES . ' AND p.de_temporada = 1 ORDER BY p.fecha_alta DESC, p.nombre LIMIT '
+        . INICIO_MAX_TEMPORADA)->fetchAll();
+    $novedades = $pdo->query(SQL_PRODUCTOS_VISIBLES . ' ORDER BY p.fecha_alta DESC, p.id_productos DESC LIMIT 8')->fetchAll();
 } catch (PDOException $e) {
-    error_log('Error al leer tipos_servicio: ' . $e->getMessage());
-    $tipos_servicio = [];
+    error_log('Error en el inicio: ' . $e->getMessage());
+    http_response_code(500);
+    die('No se pudo cargar la página. Intente nuevamente más tarde.');
 }
 
-// Token de un solo uso: evita el reenvío duplicado del formulario
-// y valida que el POST provenga de esta misma página. (Corrige P07)
-if (empty($_SESSION['token_formulario'])) {
-    $_SESSION['token_formulario'] = bin2hex(random_bytes(32));
-}
-$token = $_SESSION['token_formulario'];
-
-// Valor previo del formulario cuando se vuelve con errores.
-function viejo(string $campo): string {
-    return isset($_GET[$campo]) && is_string($_GET[$campo]) ? e($_GET[$campo]) : '';
-}
+$pagina_actual = 'inicio';
+$wa = enlace_whatsapp($sitio['whatsapp'] ?? '', 'Hola! Quería hacer una consulta.');
+$ig = usuario_instagram($sitio['instagram'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitud de Presupuesto - Elegancia a Medida</title>
-    <style>
-        :root {
-            --color-fondo: #f8f4ef;
-            --color-encabezado: #231f20;
-            --color-boton: #b7898f;
-            --color-boton-hover: #695852;
-            --color-titulo: #231f20;
-            --color-borde: #bf9d5c;
-            --color-texto: #46413f;
-
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--color-fondo) ;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            color: var(--color-texto);
-        }
-        .container {
-            background: #fff;
-            border-radius: 16px;
-            border: 1px solid rgba(191, 157, 92, 0.15);
-            box-shadow: 0 20px 60px rgba(35,31,32,0.15);
-            max-width: 560px;
-            width: 100%;
-            padding: 40px;
-        }
-        h1 {
-            text-align: center;
-            color: var(--color-titulo);
-            margin-bottom: 8px;
-            font-size: 1.75rem;
-        }
-        .subtitle {
-            text-align: center;
-            color: var(--color-texto);
-            opacity: 0.85;
-            margin-bottom: 30px;
-            font-size: 0.95rem;
-        }
-        .form-group { margin-bottom: 20px; }
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: var(--color-encabezado);
-            font-size: 0.9rem;
-        }
-        label .required { color: #e74c3c; }
-        input[type="text"],
-        input[type="tel"],
-        input[type="date"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1px solid rgba(191, 157, 92, 0.45);
-            border-radius: 8px;
-            font-size: 1rem;
-            color: var(--color-texto);
-            transition: border-color 0.2s, box-shadow 0.2s;
-            font-family: inherit;
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--color-boton);
-            box-shadow: 0 0 0 3px rgba(183, 137, 143, 0.2);
-        }
-        textarea { min-height: 110px; resize: vertical; }
-        .btn {
-            width: 100%;
-            padding: 14px;
-            background: var(--color-boton);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.05rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
-            margin-top: 10px;
-        }
-        .btn:hover {
-            color: var(--color-boton-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(105, 88, 82, 0.35);
-        }
-        .btn:active { transform: translateY(0); }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .alert {
-            padding: 14px 16px;
-            border-radius: 8px;
-            margin-bottom: 22px;
-            font-size: 0.95rem;
-        }
-        .alert-error {
-            background: #fdecea;
-            color: #c0392b;
-            border: 1px solid #f5c6cb;
-        }
-        .alert-success {
-            background: #e8f8f0;
-            color: #1e7e34;
-            border: 1px solid #c3e6cb;
-        }
-        .alert ul { margin: 8px 0 0 18px; }
-        .contador { font-size: 0.8rem; color: var(--color-texto); opacity: 0.7; text-align: right; margin-top: 4px; }
-    </style>
+    <title>Elegancia a Medida - Venta, alquiler, confección y arreglos</title>
+    <meta name="description" content="Prendas en venta y alquiler, confección a medida y arreglos. Ofertas y temporada.">
+    <link rel="stylesheet" href="css/cliente.css">
+    <link rel="stylesheet" href="css/sitio.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Solicitud de Presupuesto</h1>
-        <p class="subtitle">Elegancia a Medida — Complete el formulario y nos pondremos en contacto</p>
+<?php require __DIR__ . '/encabezado_cliente.php'; ?>
 
-        <?php
-        // Mensajes de error o éxito devueltos por procesar_presupuesto.php.
-        // Todo texto que viene de la URL se escapa antes de imprimirse. (Corrige P02)
-        if (isset($_GET['error']) && is_string($_GET['error']) && $_GET['error'] !== '') {
+<main>
+    <?php if ($flash): ?>
+        <div class="sec" style="padding-bottom:0"><div class="alert alert-<?= e($flash['tipo']) ?>"><?= e($flash['mensaje']) ?></div></div>
+    <?php endif; ?>
 
-            $errores = explode('|', $_GET['error']);
+    <?php if ($carrusel): ?>
+        <section class="carrusel" data-carrusel aria-roledescription="carrusel" aria-label="Destacados">
+            <?php foreach ($carrusel as $i => $b):
+                $img = url_imagen(CARPETA_BANNERS, $b['imagen']);
+                $link = enlace_seguro($b['enlace']); ?>
+                <div class="slide <?= $i === 0 ? 'activo' : '' ?> <?= $img ? '' : 'slide-sin-imagen' ?>"
+                     role="group" aria-roledescription="pantalla" aria-label="<?= $i + 1 ?> de <?= count($carrusel) ?>" <?= $i ? 'aria-hidden="true"' : '' ?>>
+                    <?php if ($img): ?><img src="<?= e($img) ?>" alt="" <?= $i ? 'loading="lazy"' : '' ?>><?php endif; ?>
+                    <div class="slide-contenido">
+                        <h2><?= e($b['titulo']) ?></h2>
+                        <?php if ($b['subtitulo'] !== ''): ?><p><?= e($b['subtitulo']) ?></p><?php endif; ?>
+                        <?php if ($link !== '' && $b['texto_boton'] !== ''): ?>
+                            <a class="btn-pill <?= $i % 2 ? 'claro' : '' ?>" href="<?= e($link) ?>"><?= e($b['texto_boton']) ?></a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+            <?php if (count($carrusel) > 1): ?>
+                <button type="button" class="carrusel-prev" aria-label="Anterior">‹</button>
+                <button type="button" class="carrusel-next" aria-label="Siguiente">›</button>
+                <div class="carrusel-puntos">
+                    <?php foreach ($carrusel as $i => $b): ?>
+                        <button type="button" aria-label="Ir a <?= e($b['titulo']) ?>" <?= $i === 0 ? 'aria-current="true"' : '' ?>></button>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
 
-            echo '<div class="alert alert-error"><strong>Corrija los siguientes errores:</strong><ul>';
-            foreach ($errores as $err) {
-                $err = trim($err);
-                if ($err !== '') {
-                    echo '<li>' . e($err) . '</li>';
-                }
-            }
-            echo '</ul></div>';
-        }
-
-        if (isset($_GET['ok']) && $_GET['ok'] === '1') {
-            echo '<div class="alert alert-success">¡Solicitud enviada correctamente! Nos contactaremos a la brevedad.</div>';
-        }
-        ?>
-
-        <form action="procesar_presupuesto.php" method="POST" novalidate id="formPresupuesto">
-
-            <input type="hidden" name="token" value="<?= e($token) ?>">
-
-            <div class="form-group">
-                <label for="nombre">Nombre completo <span class="required">*</span></label>
-                <input type="text" id="nombre" name="nombre" maxlength="<?= NOMBRE_MAX ?>"
-                       value="<?= viejo('nombre') ?>"
-                       required placeholder="Ej: María González">
+    <?php if ($mosaico): ?>
+        <section class="sec" aria-label="Secciones de la tienda">
+            <div class="mosaico">
+                <?php foreach ($mosaico as $b):
+                    $img = url_imagen(CARPETA_BANNERS, $b['imagen']);
+                    $link = enlace_seguro($b['enlace']) ?: 'tienda.php'; ?>
+                    <a class="mosaico-item" href="<?= e($link) ?>">
+                        <?php if ($img): ?><img src="<?= e($img) ?>" alt="" loading="lazy"><?php endif; ?>
+                        <div>
+                            <h3><?= e($b['titulo']) ?></h3>
+                            <?php if ($b['texto_boton'] !== ''): ?><span class="btn-pill"><?= e($b['texto_boton']) ?></span><?php endif; ?>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
             </div>
+        </section>
+    <?php endif; ?>
 
-            <div class="form-group">
-                <label for="telefono">Teléfono <span class="required">*</span></label>
-                <input type="tel" id="telefono" name="telefono" maxlength="<?= TELEFONO_MAX ?>"
-                       value="<?= viejo('telefono') ?>"
-                       required placeholder="Ej: 11 1234-5678">
-            </div>
+    <?php if ($ofertas): ?>
+        <section class="sec" id="ofertas">
+            <div class="sec-titulo"><h2>Ofertas</h2><a href="tienda.php?ofertas=1">Ver todas →</a></div>
+            <div class="fila-scroll"><?php foreach ($ofertas as $p) { tarjeta_producto($p); } ?></div>
+        </section>
+    <?php endif; ?>
 
-            <div class="form-group">
-                <label for="id_tipos_servicio">Tipo de servicio <span class="required">*</span></label>
-                <select id="id_tipos_servicio" name="id_tipos_servicio" required>
-                    <option value="">— Seleccione —</option>
-                    <?php
-                    // La lista viene de la tabla tipos_servicio: una sola fuente de verdad.
-                    $sel = isset($_GET['id_tipos_servicio']) && is_string($_GET['id_tipos_servicio'])
-                        ? (int) $_GET['id_tipos_servicio']
-                        : 0;
-                    foreach ($tipos_servicio as $id_tipo => $nombre_tipo) {
-                        $selected = ($sel === $id_tipo) ? ' selected' : '';
-                        echo '<option value="' . $id_tipo . '"' . $selected . '>' . e($nombre_tipo) . '</option>';
-                    }
-                    ?>
-                </select>
-            </div>
+    <?php if ($temporada): ?>
+        <section class="sec" id="temporada">
+            <div class="sec-titulo"><h2><?= e($sitio['temporada_titulo'] ?? 'Temporada') ?></h2><a href="tienda.php?temporada=1">Ver la temporada →</a></div>
+            <div class="fila-scroll"><?php foreach ($temporada as $p) { tarjeta_producto($p); } ?></div>
+        </section>
+    <?php endif; ?>
 
-            <div class="form-group">
-                <label for="tipo_prenda">Tipo de prenda <span class="required">*</span></label>
-                <input type="text" id="tipo_prenda" name="tipo_prenda" maxlength="<?= PRENDA_MAX ?>"
-                       value="<?= viejo('tipo_prenda') ?>"
-                       required placeholder="Ej: Vestido de fiesta, traje, falda...">
-            </div>
+    <section class="sec" id="productos">
+        <div class="sec-titulo"><h2>Novedades</h2><a href="tienda.php">Ver toda la tienda →</a></div>
+        <?php if ($novedades): ?>
+            <div class="productos"><?php foreach ($novedades as $p) { tarjeta_producto($p); } ?></div>
+        <?php else: ?>
+            <p>Todavía no hay prendas cargadas.</p>
+        <?php endif; ?>
+    </section>
 
-            <div class="form-group">
-                <label for="descripcion">Descripción del trabajo <span class="required">*</span></label>
-                <textarea id="descripcion" name="descripcion" required
-                          minlength="<?= DESC_MIN ?>" maxlength="<?= DESC_MAX ?>"
-                          placeholder="Detalle lo que necesita: medidas aproximadas, tela, estilo, etc."><?= viejo('descripcion') ?></textarea>
-                <div class="contador">Máximo <?= DESC_MAX ?> caracteres</div>
-            </div>
-
-            <div class="form-group">
-                <label for="fecha_requerida">Fecha requerida <span class="required">*</span></label>
-                <input type="date" id="fecha_requerida" name="fecha_requerida"
-                       value="<?= viejo('fecha_requerida') ?>"
-                       required min="<?= date('Y-m-d') ?>"
-                       max="<?= fecha_maxima()->format('Y-m-d') ?>">
-                <div class="contador">
-                    Hasta el <?= fecha_maxima()->format('d/m/Y') ?> (<?= FECHA_MAX_DIAS ?> días desde hoy)
+    <?php if (!empty($sitio['historia_texto'])): ?>
+        <section class="sec seccion-historia" id="historia">
+            <div class="historia">
+                <div class="historia-adorno" aria-hidden="true">
+                    <?php if (url_logo($pdo)): ?><img src="<?= e(url_logo($pdo)) ?>" alt=""><?php else: ?><span>E</span><?php endif; ?>
+                </div>
+                <div class="historia-texto">
+                    <h2><?= e($sitio['historia_titulo'] ?: 'Nuestra historia') ?></h2>
+                    <?php foreach (preg_split('/\R{2,}/', trim($sitio['historia_texto'])) as $parrafo): ?>
+                        <p><?= nl2br(e($parrafo)) ?></p>
+                    <?php endforeach; ?>
+                    <?php if (!empty($sitio['nombre_modista'])): ?><p class="firma">— <?= e($sitio['nombre_modista']) ?></p><?php endif; ?>
                 </div>
             </div>
+        </section>
+    <?php endif; ?>
 
-            <button type="submit" class="btn" id="btnEnviar">Enviar solicitud de presupuesto</button>
-        </form>
-    </div>
+    <section class="sec seccion-contacto" id="contacto">
+        <div class="sec-titulo"><h2>Contacto</h2><span class="sec-sub">Escribinos o pedí tu presupuesto online</span></div>
+        <div class="contacto-grilla">
+            <?php if ($wa): ?>
+                <a class="contacto-item" href="<?= e($wa) ?>" target="_blank" rel="noopener"><strong>WhatsApp</strong><span><?= e($sitio['whatsapp']) ?></span></a>
+            <?php endif; ?>
+            <?php if (!empty($sitio['telefono'])): ?>
+                <a class="contacto-item" href="tel:<?= e(preg_replace('/[^\d+]/', '', $sitio['telefono'])) ?>"><strong>Teléfono</strong><span><?= e($sitio['telefono']) ?></span></a>
+            <?php endif; ?>
+            <?php if (!empty($sitio['email'])): ?>
+                <a class="contacto-item" href="mailto:<?= e($sitio['email']) ?>"><strong>Email</strong><span><?= e($sitio['email']) ?></span></a>
+            <?php endif; ?>
+            <?php if ($ig !== ''): ?>
+                <a class="contacto-item" href="https://www.instagram.com/<?= e($ig) ?>/" target="_blank" rel="noopener"><strong>Instagram</strong><span>@<?= e($ig) ?></span></a>
+            <?php endif; ?>
+            <?php if (!empty($sitio['direccion']) || !empty($sitio['horarios'])): ?>
+                <div class="contacto-item"><strong>Atención</strong>
+                    <?php if (!empty($sitio['direccion'])): ?><span><?= e($sitio['direccion']) ?></span><?php endif; ?>
+                    <?php if (!empty($sitio['horarios'])): ?><span><?= e($sitio['horarios']) ?></span><?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="contacto-cta">
+            <a class="btn-pill" href="solicitud.php?id_tipos_servicio=1">Pedir presupuesto de confección</a>
+            <a class="btn-pill borde" href="solicitud.php?id_tipos_servicio=2">Pedir presupuesto de arreglo</a>
+        </div>
+    </section>
+</main>
 
-    <script>
-        // Refuerzo visual contra el doble clic. La protección real es el token del servidor.
-        document.getElementById('formPresupuesto').addEventListener('submit', function () {
-            // setTimeout evita que deshabilitar el botón cancele el envío en curso.
-            setTimeout(function () {
-                var b = document.getElementById('btnEnviar');
-                b.disabled = true;
-                b.textContent = 'Enviando...';
-            }, 0);
-        });
-    </script>
+<?php require __DIR__ . '/pie_cliente.php'; ?>
+<script src="js/sitio.js"></script>
+<?php if ($cliente): ?><script src="js/notificaciones.js"></script><?php endif; ?>
 </body>
 </html>

@@ -9,17 +9,20 @@ declare(strict_types=1);
  * Correcciones aplicadas en TP9:
  *  P01 — una sola inclusión de conexion.php, con __DIR__
  *  P03 — longitud de teléfono coherente con el formulario y la BD (30)
- *  P04 — zona horaria definida en config.php (compartida con index.php)
+ *  P04 — zona horaria definida en config.php (compartida con solicitud.php)
  *  P06 — límite máximo de caracteres en la descripción
  *  P07 — token de un solo uso contra el reenvío duplicado
  *
  * Agregado: límite máximo para fecha_requerida (FECHA_MAX_DIAS en config.php).
+ * Agregado: código de seguimiento para que el cliente consulte la respuesta.
+ * Agregado: solo clientes con cuenta. Nombre y teléfono salen de la cuenta
+ *           (tabla clientes) y la solicitud queda a su nombre (id_clientes).
  */
-
-session_start();
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
+
+iniciar_sesion();
 
 // Solo se acepta POST.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -29,6 +32,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Conexión a la base de datos (una sola inclusión).
 require_once __DIR__ . '/conexion.php';
+
+// Solo clientes con sesión iniciada. Los datos personales salen de su cuenta.
+$cliente = cliente_logueado($pdo);
+if ($cliente === null) {
+    flash_cliente('info', 'Tu sesión terminó. Ingresá de nuevo para enviar la solicitud.');
+    header('Location: login.php?volver=solicitud.php');
+    exit;
+}
 
 
 // =====================================================
@@ -51,7 +62,7 @@ function volver_con(array $errores, array $datos): void
         $datos
     ));
 
-    header('Location: index.php?' . $query);
+    header('Location: solicitud.php?' . $query);
     exit;
 }
 
@@ -60,20 +71,20 @@ function volver_con(array $errores, array $datos): void
 // RECUPERAR Y LIMPIAR DATOS
 // =====================================================
 
-$nombre          = campo('nombre');
-$telefono        = campo('telefono');
+$nombre          = $cliente['nombre'];
+$telefono        = $cliente['telefono'];
 $id_tipos_servicio = campo('id_tipos_servicio');
 $tipo_prenda     = campo('tipo_prenda');
 $descripcion     = campo('descripcion');
 $fecha_requerida = campo('fecha_requerida');
+$id_productos    = campo('id_productos');   // opcional: prenda del catálogo
 
 $datos = [
-    'nombre'          => $nombre,
-    'telefono'        => $telefono,
     'id_tipos_servicio' => $id_tipos_servicio,
     'tipo_prenda'     => $tipo_prenda,
     'descripcion'     => $descripcion,
     'fecha_requerida' => $fecha_requerida,
+    'id_productos'    => $id_productos,
 ];
 
 $errores = [];
@@ -100,56 +111,7 @@ if ($token_enviado === ''
 // VALIDACIONES
 // =====================================================
 
-// ---------- NOMBRE ----------
-
-if ($nombre === '') {
-
-    $errores[] = 'El nombre es obligatorio.';
-
-} elseif (mb_strlen($nombre) > NOMBRE_MAX) {
-
-    $errores[] = 'El nombre no puede superar los ' . NOMBRE_MAX . ' caracteres.';
-
-} elseif (!preg_match("/^[\p{L}\s'.-]+$/u", $nombre)) {
-
-    $errores[] = 'El nombre solo puede contener letras, espacios, puntos, guiones y apóstrofes.';
-
-} elseif (!preg_match('/\p{L}/u', $nombre)) {
-
-    // Evita nombres formados solo por signos, por ejemplo "--" o "..".
-    $errores[] = 'El nombre debe contener al menos una letra.';
-}
-
-
-// ---------- TELÉFONO ----------
-
-if ($telefono === '') {
-
-    $errores[] = 'El teléfono es obligatorio.';
-
-} elseif (mb_strlen($telefono) > TELEFONO_MAX) {
-
-    $errores[] = 'El teléfono no puede superar los ' . TELEFONO_MAX . ' caracteres.';
-
-} elseif (!preg_match('/^[\d\s+\-()]+$/', $telefono)) {
-
-    $errores[] = 'El teléfono solo puede contener números, espacios, +, - y paréntesis.';
-
-} else {
-
-    // Se cuentan únicamente los dígitos reales.
-    $digitos_telefono = preg_replace('/\D/', '', $telefono);
-
-    if (strlen($digitos_telefono) < TELEFONO_MIN_DIG) {
-
-        $errores[] = 'El teléfono debe contener al menos ' . TELEFONO_MIN_DIG . ' dígitos.';
-
-    } elseif (strlen($digitos_telefono) > 15) {
-
-        // Máximo del estándar E.164.
-        $errores[] = 'El teléfono no puede contener más de 15 dígitos.';
-    }
-}
+// Nombre y teléfono ya se validaron al crear la cuenta (registro.php).
 
 
 // ---------- TIPO DE SERVICIO ----------
@@ -221,6 +183,23 @@ if ($fecha_requerida === '') {
 }
 
 
+// ---------- PRENDA DE REFERENCIA (opcional) ----------
+
+// Si vino desde el catálogo, se verifica que el producto exista y esté visible.
+$id_productos_ok = null;
+if ($id_productos !== '') {
+    $stmt = $pdo->prepare('SELECT p.id_productos FROM productos p
+                             INNER JOIN categorias c ON c.id_categorias = p.id_categorias
+                            WHERE p.id_productos = :id AND p.activo = 1 AND c.activo = 1');
+    if (ctype_digit($id_productos) && $stmt->execute([':id' => (int) $id_productos]) && $stmt->fetchColumn()) {
+        $id_productos_ok = (int) $id_productos;
+    } else {
+        $errores[] = 'La prenda del catálogo elegida ya no está disponible. Quitala y describí lo que necesitás.';
+        $datos['id_productos'] = '';
+    }
+}
+
+
 // =====================================================
 // SI HAY ERRORES, VOLVER AL FORMULARIO
 // =====================================================
@@ -236,9 +215,15 @@ if (!empty($errores)) {
 
 try {
 
+    // Código con el que el cliente consulta su solicitud (seguimiento.php).
+    $codigo = generar_codigo_seguimiento($pdo);
+
     $sql = "
         INSERT INTO solicitudes_presupuesto
         (
+            id_clientes,
+            id_productos,
+            codigo_seguimiento,
             nombre,
             telefono,
             id_tipos_servicio,
@@ -249,6 +234,9 @@ try {
         )
         VALUES
         (
+            :id_clientes,
+            :id_productos,
+            :codigo_seguimiento,
             :nombre,
             :telefono,
             :id_tipos_servicio,
@@ -262,6 +250,9 @@ try {
     $stmt = $pdo->prepare($sql);
 
     $stmt->execute([
+        ':id_clientes'     => $cliente['id_clientes'],
+        ':id_productos'    => $id_productos_ok,
+        ':codigo_seguimiento' => $codigo,
         ':nombre'          => $nombre,
         ':telefono'        => $telefono,
         ':id_tipos_servicio' => (int) $id_tipos_servicio,
@@ -274,7 +265,8 @@ try {
     // El token se consume: un segundo envío del mismo formulario no inserta de nuevo.
     unset($_SESSION['token_formulario']);
 
-    header('Location: index.php?ok=1');
+    flash_cliente('ok', '¡Solicitud enviada! Te avisamos acá cuando la modista responda.');
+    header('Location: seguimiento.php?codigo=' . $codigo);
     exit;
 
 } catch (PDOException $e) {

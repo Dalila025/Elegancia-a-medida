@@ -6,16 +6,13 @@ declare(strict_types=1);
  *
  * Recibe POST de presupuesto.php, valida, calcula plazo, recargo y total
  * (el cálculo del navegador es solo una vista previa: acá se recalcula),
- * guarda en presupuestos y pasa la solicitud a "Presupuestado".
+ * guarda en presupuestos, pasa la solicitud a "Presupuestado" y crea el
+ * aviso para el cliente (tabla notificaciones).
  */
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
-
-session_start();
-
-require_once __DIR__ . '/auth.php';
-requerir_login();   // solo la modista con sesión iniciada
+iniciar_sesion();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -23,6 +20,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once __DIR__ . '/conexion.php';
+
+// Solo la modista con sesión iniciada (panel_login.php).
+$usuario = requerir_modista($pdo);
 
 
 function campo(string $nombre): string
@@ -133,6 +133,11 @@ try {
         exit;
     }
 
+    // ¿Ya tenía presupuesto? (para avisarle al cliente "actualizado" en vez de "listo")
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM presupuestos WHERE id_solicitudes_presupuesto = :id');
+    $stmt->execute([':id' => $id]);
+    $ya_existia = (int) $stmt->fetchColumn() > 0;
+
     $monto_base = round((float) $monto_txt, 2);
     $tarifa     = tarifa_para_plazo($pdo, $plazo);
     $recargo    = $tarifa ? (float) $tarifa['recargo_porcentaje'] : 0.0;
@@ -154,7 +159,10 @@ try {
             recargo_porcentaje  = VALUES(recargo_porcentaje),
             monto_total         = VALUES(monto_total),
             observaciones       = VALUES(observaciones),
-            fecha_actualizacion = NOW()
+            fecha_actualizacion = NOW(),
+            -- presupuesto nuevo: la respuesta anterior del cliente ya no vale
+            fecha_respuesta_cliente = NULL,
+            comentario_cliente  = DEFAULT(comentario_cliente)
     ';
     $pdo->prepare($sql)->execute([
         ':id_solicitudes_presupuesto' => $id,
@@ -171,6 +179,9 @@ try {
         ->execute([':nuevo' => ESTADO_PRESUPUESTADO, ':id' => $id]);
 
     $pdo->commit();
+
+    // Aviso para el cliente (seguimiento.php). Si falla, no afecta lo guardado.
+    notificar($pdo, $id, ESTADO_PRESUPUESTADO, $ya_existia);
 
     flash('ok', "Presupuesto de la solicitud #$id guardado: " . pesos($total)
         . ', entrega el ' . DateTime::createFromFormat('!Y-m-d', $fecha_entrega)->format('d/m/Y')

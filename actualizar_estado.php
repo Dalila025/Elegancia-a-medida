@@ -6,17 +6,14 @@ declare(strict_types=1);
  *
  * Recibe POST desde modista.php (Rechazar, Cliente aceptó, Completar,
  * Cancelar, Reabrir), valida el token del panel y que el cambio esté
- * permitido en TRANSICIONES (config.php), actualiza
- * solicitudes_presupuesto.id_estados_solicitud y vuelve al panel.
+ * permitido (TRANSICIONES en config.php), actualiza
+ * solicitudes_presupuesto.id_estados_solicitud, crea el aviso para el
+ * cliente (tabla notificaciones) y vuelve al panel.
  */
-
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
-session_start();
-
-require_once __DIR__ . '/auth.php';
-requerir_login();   // solo la modista con sesión iniciada
+iniciar_sesion();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -25,25 +22,27 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/conexion.php';
 
+// Solo la modista con sesión iniciada (panel_login.php).
+$usuario = requerir_modista($pdo);
+
 
 /** Guarda el mensaje y vuelve al panel conservando filtro y búsqueda. */
 function volver_panel(string $tipo, string $mensaje): void
 {
     flash($tipo, $mensaje);
 
-    $estado   = isset($_POST['volver_estado'])   ? (int) $_POST['volver_estado']   : 0;
-    $servicio = isset($_POST['volver_servicio']) ? (int) $_POST['volver_servicio'] : 0;
-    $q        = isset($_POST['volver_q']) && is_string($_POST['volver_q']) ? trim($_POST['volver_q']) : '';
+    $params = [];
+    $estado = isset($_POST['volver_estado']) ? (int) $_POST['volver_estado'] : 0;
+    $q      = isset($_POST['volver_q']) && is_string($_POST['volver_q']) ? trim($_POST['volver_q']) : '';
 
-    if (!array_key_exists($estado, ESTADOS)) {
-        $estado = 0;
+    if ($estado > 0 && array_key_exists($estado, ESTADOS)) {
+        $params['estado'] = $estado;
     }
-    // El servicio se vuelve a validar contra la tabla al cargar modista.php.
-    if ($servicio < 0) {
-        $servicio = 0;
+    if ($q !== '') {
+        $params['q'] = $q;
     }
 
-    header('Location: ' . url_panel(['estado' => $estado, 'servicio' => $servicio, 'q' => $q]));
+    header('Location: modista.php' . ($params ? '?' . http_build_query($params) : ''));
     exit;
 }
 
@@ -80,7 +79,8 @@ try {
     $estado_actual = (int) $fila['id_estados_solicitud'];
 
     // Solo se permiten los cambios definidos en config.php.
-    if (!isset(TRANSICIONES[$estado_actual][$estado_nuevo])) {
+    // Aceptar/rechazar el presupuesto lo hace solo el cliente (responder_presupuesto.php).
+    if (!isset(transiciones_permitidas($estado_actual)[$estado_nuevo])) {
         volver_panel(
             'error',
             "La solicitud #$id está «" . (ESTADOS[$estado_actual] ?? 'Desconocido')
@@ -104,6 +104,9 @@ try {
     if ($upd->rowCount() === 0) {
         volver_panel('error', "La solicitud #$id cambió mientras tanto. Revise su estado actual.");
     }
+
+    // Aviso para el cliente (seguimiento.php). Si falla, no afecta el cambio.
+    notificar($pdo, $id, $estado_nuevo);
 
     volver_panel('ok', "Solicitud #$id: " . ESTADOS[$estado_actual] . ' → ' . ESTADOS[$estado_nuevo] . '.');
 

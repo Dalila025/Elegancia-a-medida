@@ -2,28 +2,22 @@
 declare(strict_types=1);
 
 /**
- * Cerrar sesión — Elegancia a Medida
+ * Cerrar sesión del cliente — Elegancia a Medida
  *
- * Solo por POST y con el token del panel, para que un link de otro sitio
- * no pueda cerrar la sesión de la modista.
+ * Solo por POST y con token (un enlace de otra página no puede cerrar la
+ * sesión). Borra solo los datos del cliente: si en el mismo navegador está
+ * abierta la sesión de la modista, esa sigue.
  */
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
+iniciar_sesion();
 
-session_start();
-
-require_once __DIR__ . '/auth.php';
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !token_modista_valido()) {
-    header('Location: modista.php');
-    exit;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && token_cliente_valido()) {
+    unset($_SESSION['cliente_id'], $_SESSION['token_cliente'], $_SESSION['token_formulario']);
+    session_regenerate_id(true);
+    flash_cliente('ok', 'Cerraste sesión.');
 }
 
-cerrar_sesion();
-
-session_start();
-$_SESSION['aviso_login'] = 'Cerraste la sesión correctamente.';
-
-header('Location: login.php');
+header('Location: index.php');
 exit;
