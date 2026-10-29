@@ -47,8 +47,8 @@ $pagina_actual = 'tarifas';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tarifas por plazo · Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/modista.css">
-    <link rel="stylesheet" href="css/panel.css">
+    <link rel="stylesheet" href="<?= asset('css/modista.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/panel.css') ?>">
 </head>
 <body>
     <?php require __DIR__ . '/encabezado_modista.php'; ?>

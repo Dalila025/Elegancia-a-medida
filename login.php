@@ -59,8 +59,8 @@ $pagina_actual = 'login';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión - Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/cliente.css">
-    <link rel="stylesheet" href="css/sitio.css">
+    <link rel="stylesheet" href="<?= asset('css/cliente.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/sitio.css') ?>">
 </head>
 <body>
 <?php require __DIR__ . '/encabezado_cliente.php'; ?>
@@ -97,6 +97,6 @@ $pagina_actual = 'login';
     </div>
 </main>
 <?php require __DIR__ . '/pie_cliente.php'; ?>
-<script src="js/sitio.js"></script>
+<script src="<?= asset('js/sitio.js') ?>"></script>
 </body>
 </html>

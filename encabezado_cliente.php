@@ -17,6 +17,15 @@ $sin_leer      = !empty($cliente) ? avisos_sin_leer($pdo, (int) $cliente['id_cli
 $en_carrito    = !empty($cliente) ? cantidad_carrito($pdo, (int) $cliente['id_clientes']) : 0;
 $deshacer      = !empty($cliente) ? ultimo_agregado($pdo, (int) $cliente['id_clientes']) : null;
 $primer_nombre = !empty($cliente) ? explode(' ', trim($cliente['nombre']))[0] : '';
+// «No te olvides…»: turnos de los próximos días y prendas listas para retirar (funciones_taller.php)
+$recordatorios = [];
+if (!empty($cliente)) {
+    try {
+        $recordatorios = recordatorios_cliente($pdo, (int) $cliente['id_clientes']);
+    } catch (PDOException $e) {
+        error_log('No se pudieron leer los recordatorios: ' . $e->getMessage());
+    }
+}
 
 // Opciones de los menús: solo categorías y tipos que tienen prendas visibles.
 $menu = ['cat' => [], 'tipo' => [], 'cat_alq' => [], 'tipo_alq' => [], 'cat_venta' => [], 'tipos_todos' => []];
@@ -126,6 +135,7 @@ function lista_menu(array $filas, callable $url): void
                             <div class="menu-col"><h3>A medida</h3><ul>
                                 <li><a href="solicitud.php?id_tipos_servicio=1">Solicitud de presupuesto</a></li>
                                 <li><a href="solicitud.php?id_tipos_servicio=3">Diseño personalizado</a></li>
+                                <li><a href="mis_medidas.php">Mis medidas</a></li>
                                 <li><a href="mis_solicitudes.php">Mis solicitudes</a></li>
                             </ul></div>
                             <div class="menu-col"><h3>Inspirate en</h3><ul>
@@ -144,6 +154,7 @@ function lista_menu(array $filas, callable $url): void
                     <div class="menu-panel" id="panel-arreglos" hidden>
                         <div class="menu-panel-inner">
                             <div class="menu-col"><h3>Arreglos</h3><ul>
+                                <li><a href="precios_arreglos.php">Lista de precios</a></li>
                                 <li><a href="solicitud.php?id_tipos_servicio=2">Solicitud de presupuesto</a></li>
                                 <li><a href="mis_solicitudes.php">Mis solicitudes</a></li>
                             </ul></div>
@@ -154,8 +165,8 @@ function lista_menu(array $filas, callable $url): void
                             </ul></div>
                             <div class="menu-col menu-destacado">
                                 <h3>Ruedos, entallados, cierres…</h3>
-                                <p>Describí el arreglo y te respondemos con el precio y cuándo está listo.</p>
-                                <a class="btn-pill" href="solicitud.php?id_tipos_servicio=2">Pedir presupuesto</a>
+                                <p>Mirá los precios de los arreglos más comunes y pedí el tuyo en un minuto.</p>
+                                <a class="btn-pill" href="precios_arreglos.php">Ver lista de precios</a>
                             </div>
                         </div>
                     </div>
@@ -177,6 +188,8 @@ function lista_menu(array $filas, callable $url): void
                     <div class="menu-cuenta" id="menu-cuenta" hidden>
                         <p class="menu-cuenta-hola">Hola, <strong><?= e($primer_nombre) ?></strong></p>
                         <a href="mis_pedidos.php">Mis pedidos</a>
+                        <a href="mis_medidas.php">Mis medidas</a>
+                        <a href="mi_cuenta.php">Estado de cuenta</a>
                         <a href="mis_solicitudes.php">Mis solicitudes<?= $sin_leer ? ' <span class="globo globo-texto">' . $sin_leer . '</span>' : '' ?></a>
                         <a href="solicitud.php">Pedir presupuesto</a>
                         <form method="post" action="logout.php">
@@ -208,7 +221,7 @@ function lista_menu(array $filas, callable $url): void
         <div class="aviso-deshacer" id="aviso-deshacer" data-segundos="<?= max(1, (int) $deshacer['segundos']) ?>" role="status">
             <div class="aviso-deshacer-inner">
                 <span>Agregaste <strong><?= e($deshacer['nombre']) ?></strong>
-                    (<?= $deshacer['modalidad'] === 'alquiler' ? 'alquiler' : 'venta' ?>) al carrito.</span>
+                    (<?= $deshacer['modalidad'] === 'alquiler' ? 'alquiler' : 'venta' ?><?= $deshacer['talle'] !== '' ? ', ' . e(mb_strtolower(texto_talle($deshacer['talle']))) : '' ?>) al carrito.</span>
                 <form method="post" action="carrito_accion.php">
                     <input type="hidden" name="token" value="<?= e(token_cliente()) ?>">
                     <input type="hidden" name="accion" value="deshacer">
@@ -222,3 +235,12 @@ function lista_menu(array $filas, callable $url): void
         </div>
     <?php endif; ?>
 </header>
+<?php if ($recordatorios): ?>
+    <div class="recordatorios" role="status">
+        <?php foreach ($recordatorios as $rec): ?>
+            <a href="seguimiento.php?codigo=<?= e(rawurlencode($rec['codigo'])) ?>#turno" class="recordatorio">
+                <span aria-hidden="true">📅</span> <?= e($rec['texto']) ?> <span class="rec-ver">Ver →</span>
+            </a>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>

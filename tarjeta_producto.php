@@ -5,6 +5,7 @@
  *
  * El botón agrega la prenda al carrito (carrito_accion.php). Si la prenda
  * se vende y se alquila, hay un botón para cada modalidad.
+ * Si la prenda tiene guía de talles, el botón lleva a la ficha para elegir el talle.
  * Sin sesión iniciada, carrito_accion.php manda a iniciar sesión.
  */
 
@@ -12,7 +13,8 @@
 const SQL_PRODUCTOS_VISIBLES = 'SELECT p.id_productos, p.nombre, p.descripcion, p.en_venta, p.precio_venta,
                   p.en_alquiler, p.precio_alquiler, p.descuento_porcentaje, p.oferta_hasta,
                   p.de_temporada, p.imagen, p.fecha_alta, p.id_categorias, p.id_tipos_producto,
-                  c.nombre AS categoria, t.nombre AS tipo
+                  c.nombre AS categoria, t.nombre AS tipo,
+                  (SELECT COUNT(*) FROM talles_producto tp WHERE tp.id_productos = p.id_productos) AS n_talles
              FROM productos p
              INNER JOIN categorias c     ON c.id_categorias     = p.id_categorias     AND c.activo = 1
              INNER JOIN tipos_producto t ON t.id_tipos_producto = p.id_tipos_producto AND t.activo = 1
@@ -48,13 +50,17 @@ function boton_carrito(array $p, string $modalidad, string $texto, string $clase
     <?php
 }
 
-function tarjeta_producto(array $p): void
+/**
+ * Tarjeta de un producto. $solo = 'alquiler' (o 'venta') muestra solo esa
+ * modalidad: precio y botón (se usa en las filas de alquiler del inicio).
+ */
+function tarjeta_producto(array $p, string $solo = ''): void
 {
     $id    = (int) $p['id_productos'];
     $foto  = url_imagen_producto($p['imagen']);
     $desc  = oferta_vigente($p) ? (int) $p['descuento_porcentaje'] : 0;
-    $venta = (int) $p['en_venta'] === 1;
-    $alq   = (int) $p['en_alquiler'] === 1;
+    $venta = (int) $p['en_venta'] === 1 && $solo !== 'alquiler';
+    $alq   = (int) $p['en_alquiler'] === 1 && $solo !== 'venta';
     ?>
     <article class="tarjeta-prod">
         <a class="tarjeta-foto" href="prenda.php?id=<?= $id ?>">
@@ -76,7 +82,9 @@ function tarjeta_producto(array $p): void
             <?php if ($alq)   { echo linea_precio($p, 'alquiler'); } ?>
         </div>
         <div class="tarjeta-acciones">
-            <?php if ($venta && $alq): ?>
+            <?php if ((int) ($p['n_talles'] ?? 0) > 0): ?>
+                <a class="btn-pill" href="prenda.php?id=<?= $id ?>#elegir-talle">Elegir talle</a>
+            <?php elseif ($venta && $alq): ?>
                 <?php boton_carrito($p, 'venta', 'Comprar'); ?>
                 <?php boton_carrito($p, 'alquiler', 'Alquilar', 'borde'); ?>
             <?php elseif ($alq): ?>

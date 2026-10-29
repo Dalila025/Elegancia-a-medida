@@ -45,8 +45,8 @@ $pagina_actual = 'sitio';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
     <title>Datos del sitio · Panel · Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/modista.css">
-    <link rel="stylesheet" href="css/panel.css">
+    <link rel="stylesheet" href="<?= asset('css/modista.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/panel.css') ?>">
 </head>
 <body>
     <?php require __DIR__ . '/encabezado_modista.php'; ?>
@@ -103,9 +103,9 @@ $pagina_actual = 'sitio';
             <section class="tarjeta">
                 <h2>Temporada</h2>
                 <div class="campo" style="max-width:420px">
-                    <label for="temporada_titulo">Título de la sección de temporada</label>
+                    <label for="temporada_titulo">Nombre de la temporada</label>
                     <input type="text" id="temporada_titulo" name="temporada_titulo" maxlength="60" value="<?= e($v('temporada_titulo')) ?>" placeholder="Ej: Primavera-Verano 2026">
-                    <div class="ayuda">Los productos de temporada se marcan en cada producto del catálogo.</div>
+                    <div class="ayuda">Es el título que se ve en la tienda al filtrar «Temporada». Los productos de temporada se marcan en cada producto del catálogo.</div>
                 </div>
             </section>
 
@@ -131,21 +131,21 @@ $pagina_actual = 'sitio';
         </form>
     </main>
     <script>
-       var campoLogo = document.getElementById('logo'),
-    cajaLogo  = document.getElementById('logo-preview'),
-    btnLogo   = document.getElementById('logo-cancelar'),
-    original  = cajaLogo.innerHTML;   // lo que se veía antes de elegir un archivo
-campoLogo.addEventListener('change', function () {
-    var f = this.files && this.files[0];
-    if (!f) { cajaLogo.innerHTML = original; btnLogo.hidden = true; return; }
-    var img = document.createElement('img');
-    img.alt = 'Logo nuevo'; img.src = URL.createObjectURL(f);
-    cajaLogo.innerHTML = ''; cajaLogo.appendChild(img); btnLogo.hidden = false;
-});
-btnLogo.addEventListener('click', function () {
-    campoLogo.value = '';            // no se sube nada al guardar
-    cajaLogo.innerHTML = original; btnLogo.hidden = true;
-});
+        var campoLogo = document.getElementById('logo'),
+            cajaLogo  = document.getElementById('logo-preview'),
+            btnLogo   = document.getElementById('logo-cancelar'),
+            original  = cajaLogo.innerHTML;   // lo que se veía antes de elegir un archivo
+        campoLogo.addEventListener('change', function () {
+            var f = this.files && this.files[0];
+            if (!f) { cajaLogo.innerHTML = original; btnLogo.hidden = true; return; }
+            var img = document.createElement('img');
+            img.alt = 'Logo nuevo'; img.src = URL.createObjectURL(f);
+            cajaLogo.innerHTML = ''; cajaLogo.appendChild(img); btnLogo.hidden = false;
+        });
+        btnLogo.addEventListener('click', function () {
+            campoLogo.value = '';            // no se sube nada al guardar
+            cajaLogo.innerHTML = original; btnLogo.hidden = true;
+        });
     </script>
 </body>
 </html>

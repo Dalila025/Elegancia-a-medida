@@ -74,6 +74,9 @@ function tabla_lista(string $lista, array $filas, string $token, bool $con_descr
                         <?php if ($n === 0): ?>
                             <button type="submit" form="<?= $f ?>" name="accion" value="eliminar" class="btn-secundario btn-peligro"
                                     onclick="return confirm('¿Eliminar «<?= e(addslashes($c['nombre'])) ?>»?');">Eliminar</button>
+                        <?php else: ?>
+                            <button type="button" class="btn-secundario btn-peligro" disabled
+                                    title="Tiene <?= $n ?> producto(s). Cambialos de categoría para poder eliminarla.">Eliminar</button>
                         <?php endif; ?>
                     </div>
                 </td>
@@ -107,8 +110,8 @@ $pagina_actual = 'categorias';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
     <title>Categorías y tipos · Panel · Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/modista.css">
-    <link rel="stylesheet" href="css/panel.css">
+    <link rel="stylesheet" href="<?= asset('css/modista.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/panel.css') ?>">
 </head>
 <body>
     <?php require __DIR__ . '/encabezado_modista.php'; ?>
@@ -120,7 +123,7 @@ $pagina_actual = 'categorias';
 
         <section class="tarjeta">
             <h2>Categorías</h2>
-            <p style="margin-bottom:14px">La ocasión o línea de cada prenda (Fiesta, Novias, Egresados…). Son los botones de filtro del inicio. Ocultar una categoría esconde todos sus productos.</p>
+            <p style="margin-bottom:14px">La ocasión o línea de cada prenda (Fiesta, Novias, Egresados…). Arman el menú Shop / Alquiler y los filtros de la tienda. Ocultar una categoría esconde todos sus productos.</p>
             <?php tabla_lista('categorias', $categorias, $token, true); ?>
         </section>
 

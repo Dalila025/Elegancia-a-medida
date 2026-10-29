@@ -9,11 +9,13 @@ declare(strict_types=1);
  * (cancelar_pedido.php). Al abrir esta página, los avisos de pedidos
  * quedan leídos.
  *
- * Tablas: pedidos, items_pedido, notificaciones.
+ * Cuando la modista confirma el pedido, aparece el recuadro para pagar la
+ * seña (funciones_pagos.php → pagar_sena.php).
+ *
+ * Tablas: pedidos, items_pedido, notificaciones, pagos.
  */
 
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/funciones.php';
+require_once __DIR__ . '/funciones_pagos.php';
 iniciar_sesion();
 require_once __DIR__ . '/conexion.php';
 
@@ -58,8 +60,8 @@ $f = fn(?string $fecha) => $fecha ? DateTime::createFromFormat('!Y-m-d', $fecha)
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mis pedidos - Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/cliente.css">
-    <link rel="stylesheet" href="css/sitio.css">
+    <link rel="stylesheet" href="<?= asset('css/cliente.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/sitio.css') ?>">
 </head>
 <body>
 <?php require __DIR__ . '/encabezado_cliente.php'; ?>
@@ -99,6 +101,8 @@ $f = fn(?string $fecha) => $fecha ? DateTime::createFromFormat('!Y-m-d', $fecha)
                                 <a href="prenda.php?id=<?= (int) $it['id_productos'] ?>"><?= e($it['nombre_producto']) ?></a>
                             <?php else: ?><?= e($it['nombre_producto']) ?><?php endif; ?>
                             <?php if ((int) $it['descuento_porcentaje'] > 0): ?><small style="color:var(--acento)"> (−<?= (int) $it['descuento_porcentaje'] ?> %)</small><?php endif; ?>
+                            <?php if ($it['talle'] !== ''): ?><br><span class="item-talle"><?= e(texto_talle($it['talle'])) ?></span><?php endif; ?>
+                            <?php if ($it['medidas'] !== ''): ?><span class="item-medidas">Tus medidas: <?= e($it['medidas']) ?></span><?php endif; ?>
                         </td>
                         <td><?= $it['modalidad'] === 'alquiler' ? 'Alquiler' : 'Venta' ?></td>
                         <td class="num"><?= (int) $it['cantidad'] ?></td>
@@ -114,8 +118,11 @@ $f = fn(?string $fecha) => $fecha ? DateTime::createFromFormat('!Y-m-d', $fecha)
             <?php if ($p['comentario_cliente'] !== ''): ?><p style="font-size:.9rem;color:#8a817d">Tus aclaraciones: <?= e($p['comentario_cliente']) ?></p><?php endif; ?>
             <?php if ($p['nota_modista'] !== ''): ?><div class="nota-modista"><strong>Nota de la modista:</strong> <?= e($p['nota_modista']) ?></div><?php endif; ?>
 
+
             <div class="pie-pedido">
-                <strong>Total estimado: <?= e(pesos((float) $p['total_estimado'])) ?><?= (int) $p['tiene_a_consultar'] ? ' + a consultar' : '' ?></strong>
+                <?php $con_consultar = (bool) array_filter($lista, fn($it) => $it['precio_unitario'] === null); ?>
+                <strong><?= (int) $p['tiene_a_consultar'] ? 'Total estimado: ' . e(pesos((float) $p['total_estimado'])) . ' + a consultar'
+                          : ($con_consultar ? 'Total acordado con la modista: ' : 'Total: ') . e(pesos((float) $p['total_estimado'])) ?></strong>
                 <?php if ($est === PEDIDO_PENDIENTE): ?>
                     <form method="post" action="cancelar_pedido.php" onsubmit="return confirm('¿Cancelar el pedido <?= e(formatear_codigo($p['codigo'])) ?>?');">
                         <input type="hidden" name="token" value="<?= e($token) ?>">
@@ -124,12 +131,20 @@ $f = fn(?string $fecha) => $fecha ? DateTime::createFromFormat('!Y-m-d', $fecha)
                     </form>
                 <?php endif; ?>
             </div>
+            <?php
+            // Seña: se puede pagar en los estados de PEDIDO_ESTADOS_CON_SENA; si ya se pagó, se muestra siempre.
+            $total_sena = total_pedido_para_sena($p);
+            $sena = estado_sena($pdo, 'pedido', $idp, $total_sena);
+            if (in_array($est, PEDIDO_ESTADOS_CON_SENA, true) || $sena['cubierta']) {
+                mostrar_caja_sena('pedido', $p['codigo'], $total_sena, $sena, $token, hay_pago_mp_pendiente($pdo, 'pedido', $idp));
+            }
+            ?>
         </article>
     <?php endforeach; ?>
 </main>
 
 <?php require __DIR__ . '/pie_cliente.php'; ?>
-<script src="js/sitio.js"></script>
-<script src="js/notificaciones.js"></script>
+<script src="<?= asset('js/sitio.js') ?>"></script>
+<script src="<?= asset('js/notificaciones.js') ?>"></script>
 </body>
 </html>

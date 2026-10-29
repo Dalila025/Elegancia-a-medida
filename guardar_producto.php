@@ -9,7 +9,8 @@ declare(strict_types=1);
  *   alternar (ocultar / mostrar en el sitio)
  *   eliminar (borra el producto y su foto; las solicitudes que lo usaban
  *             quedan sin referencia: id_productos = NULL)
- * Tabla: productos (con tipo de prenda, venta/alquiler, oferta y temporada).
+ * Tablas: productos (con tipo de prenda, venta/alquiler, oferta y temporada)
+ *         y talles_producto (guía de talles: se reemplaza entera al guardar).
  */
 
 require_once __DIR__ . '/config.php';
@@ -157,6 +158,42 @@ try {
         }
     }
 
+    // Guía de talles: filas con nombre de talle; las filas totalmente vacías se ignoran.
+    $talles_form = [];   // lo enviado (para devolverlo si hay errores)
+    $talles      = [];   // lo que se guarda
+    $vistos      = [];
+    $filas = isset($_POST['talles']) && is_array($_POST['talles']) ? array_slice($_POST['talles'], 0, TALLES_MAX) : [];
+    foreach ($filas as $n => $fila) {
+        if (!is_array($fila)) { continue; }
+        $f = ['talle' => isset($fila['talle']) && is_string($fila['talle']) ? trim($fila['talle']) : ''];
+        foreach (array_keys(MEDIDAS_TALLE) as $c) {
+            $f[$c] = isset($fila[$c]) && is_string($fila[$c]) ? trim($fila[$c]) : '';
+        }
+        if (implode('', $f) === '') { continue; }
+        $talles_form[] = $f;
+
+        $nro = count($talles_form);
+        if ($f['talle'] === '') {
+            $errores[] = "Guía de talles, fila $nro: falta el nombre del talle (ej: M o 40).";
+            continue;
+        }
+        if (mb_strlen($f['talle']) > TALLE_NOMBRE_MAX || mb_strtolower($f['talle']) === mb_strtolower(TALLE_A_MEDIDA)) {
+            $errores[] = "Guía de talles: el talle «{$f['talle']}» no es válido (hasta " . TALLE_NOMBRE_MAX . ' caracteres; «A medida» está reservado).';
+            continue;
+        }
+        if (isset($vistos[mb_strtolower($f['talle'])])) {
+            $errores[] = "Guía de talles: el talle «{$f['talle']}» está repetido.";
+            continue;
+        }
+        $vistos[mb_strtolower($f['talle'])] = true;
+        $fila_ok = ['talle' => $f['talle']];
+        foreach (MEDIDAS_TALLE as $c => [$nombre_medida]) {   // ¡no usar $nombre: es el de la prenda!
+            [$fila_ok[$c], $err] = leer_medida($f[$c], "Talle {$f['talle']}, $nombre_medida");
+            if ($err) { $errores[] = $err; }
+        }
+        $talles[] = $fila_ok;
+    }
+
     // La foto se procesa al final: solo si todo lo demás está bien.
     $foto_nueva = null;
     if (!$errores) {
@@ -179,6 +216,7 @@ try {
                 'en_alquiler' => $en_alquiler, 'precio_alquiler' => campo('precio_alquiler'),
                 'descuento_porcentaje' => $descuento_t, 'oferta_hasta' => $oferta_t,
                 'de_temporada' => $temporada, 'activo' => $activo,
+                'talles' => $talles_form,
             ],
         ];
         header('Location: producto.php' . ($id > 0 ? '?id=' . $id : ''));
@@ -206,6 +244,7 @@ try {
     ];
 
     try {
+        $pdo->beginTransaction();   // producto y guía de talles se guardan juntos
         if ($actual) {
             $params[':id'] = $id;
             $pdo->prepare('UPDATE productos
@@ -223,8 +262,25 @@ try {
                            VALUES (:cat, :tipo, :nombre, :desc, :en_venta, :venta,
                                    :en_alq, :alquiler, :desc_pct, :hasta, :temp, :imagen, :activo)')->execute($params);
             $mensaje = "Se agregó «{$nombre}» al catálogo" . ($activo ? '.' : ' (oculto).');
+            $id = (int) $pdo->lastInsertId();
+        }
+
+        // Guía de talles: se reemplaza entera
+        $pdo->prepare('DELETE FROM talles_producto WHERE id_productos = :id')->execute([':id' => $id]);
+        $cols = array_keys(MEDIDAS_TALLE);
+        $ins = $pdo->prepare('INSERT INTO talles_producto (id_productos, talle, orden, ' . implode(', ', $cols) . ')
+                              VALUES (:id, :talle, :orden, :' . implode(', :', $cols) . ')');
+        foreach ($talles as $orden => $t) {
+            $p = [':id' => $id, ':talle' => $t['talle'], ':orden' => $orden + 1];
+            foreach ($cols as $c) { $p[":$c"] = $t[$c]; }
+            $ins->execute($p);
+        }
+        $pdo->commit();
+        if ($talles) {
+            $mensaje .= ' Guía de talles: ' . implode(', ', array_column($talles, 'talle')) . '.';
         }
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) { $pdo->rollBack(); }
         borrar_imagen_producto($foto_nueva);   // no dejar fotos sueltas si falló la base
         throw $e;
     }

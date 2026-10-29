@@ -28,7 +28,7 @@ unset($_SESSION['form_pedido']);
 
 try {
     $stmt = $pdo->prepare(
-        'SELECT ic.id_items_carrito, ic.modalidad, ic.cantidad,
+        'SELECT ic.id_items_carrito, ic.modalidad, ic.talle, ic.cantidad,
                 p.id_productos, p.nombre, p.imagen, p.en_venta, p.precio_venta, p.en_alquiler, p.precio_alquiler,
                 p.descuento_porcentaje, p.oferta_hasta,
                 (p.activo = 1 AND c.activo = 1 AND t.activo = 1
@@ -83,8 +83,8 @@ function boton_item(int $id, string $accion, string $texto, string $clase, strin
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carrito - Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/cliente.css">
-    <link rel="stylesheet" href="css/sitio.css">
+    <link rel="stylesheet" href="<?= asset('css/cliente.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/sitio.css') ?>">
 </head>
 <body>
 <?php require __DIR__ . '/encabezado_cliente.php'; ?>
@@ -119,6 +119,8 @@ function boton_item(int $id, string $accion, string $texto, string $clase, strin
                         <div>
                             <h3><a href="prenda.php?id=<?= (int) $it['id_productos'] ?>"><?= e($it['nombre']) ?></a></h3>
                             <span class="modo-et <?= $it['modalidad'] ?>"><?= $it['modalidad'] === 'alquiler' ? 'Alquiler' : 'Venta' ?></span>
+                            <?php if ($it['talle'] !== ''): ?><span class="item-talle"><?= e(texto_talle($it['talle'])) ?></span><?php endif; ?>
+                            <?php if ($it['talle'] === TALLE_A_MEDIDA): ?><span class="item-medidas">Se confecciona con <a href="mis_medidas.php">tus medidas</a>.</span><?php endif; ?>
                             <?php if ($ok): ?>
                                 <div class="precio-u"><?= $it['precio'] === null ? 'Precio a consultar' : e(pesos($it['precio'])) . ' c/u' ?></div>
                             <?php else: ?>
@@ -157,7 +159,7 @@ function boton_item(int $id, string $accion, string $texto, string $clase, strin
                     <label for="comentario">Aclaraciones (opcional)</label>
                     <textarea id="comentario" name="comentario" rows="3" maxlength="<?= PEDIDO_COMENTARIO_MAX ?>" placeholder="Talle, color, horario para retirar…"><?= e($viejo['comentario'] ?? '') ?></textarea>
                     <button type="submit" class="btn-pill" <?= $no_disponibles || !$unidades ? 'disabled' : '' ?>>Confirmar pedido</button>
-                    <p class="nota">No se paga online: la modista confirma el pedido y te contacta para coordinar el pago y el retiro.</p>
+                    <p class="nota">Ahora no se cobra nada: cuando la modista confirme el pedido, vas a poder pagar una seña del <?= SENA_PORCENTAJE ?> % desde «Mis pedidos». El resto se paga al retirar.</p>
                 </form>
             </aside>
         </div>
@@ -165,7 +167,7 @@ function boton_item(int $id, string $accion, string $texto, string $clase, strin
 </main>
 
 <?php require __DIR__ . '/pie_cliente.php'; ?>
-<script src="js/sitio.js"></script>
-<script src="js/notificaciones.js"></script>
+<script src="<?= asset('js/sitio.js') ?>"></script>
+<script src="<?= asset('js/notificaciones.js') ?>"></script>
 </body>
 </html>

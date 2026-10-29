@@ -14,6 +14,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
 require_once __DIR__ . '/tarjeta_producto.php';
+require_once __DIR__ . '/cinta_arco.php';
 iniciar_sesion();
 require_once __DIR__ . '/conexion.php';
 
@@ -73,6 +74,10 @@ try {
     $stmt->execute($params);
     $productos = $stmt->fetchAll();
 
+    // Página de Alquiler sin otros filtros: arriba va la cinta en arco con todas las prendas.
+    $solo_alquiler = $f['modalidad'] === 'alquiler' && !$f['categoria'] && !$f['tipo'] && !$f['ofertas'] && !$f['temporada'] && $f['q'] === '';
+    $arco = $solo_alquiler ? prendas_para_arco($pdo) : [];
+
     // Opciones del costado, con cantidad de prendas
     $cats  = $pdo->query('SELECT c.id_categorias AS id, c.nombre, COUNT(*) AS n FROM productos p
                             INNER JOIN categorias c ON c.id_categorias = p.id_categorias AND c.activo = 1
@@ -95,7 +100,7 @@ $titulo = 'Tienda';
 if ($f['modalidad'] === 'alquiler') { $titulo = 'Alquiler'; }
 elseif ($f['modalidad'] === 'venta') { $titulo = 'Venta'; }
 if ($f['ofertas'])   { $titulo = 'Ofertas'; }
-if ($f['temporada']) { $titulo = 'Temporada'; }
+if ($f['temporada']) { $titulo = datos_sitio($pdo)['temporada_titulo'] ?? 'Temporada'; }
 if ($f['categoria'] && $nombre_de($cats, $f['categoria']) !== '') { $titulo .= ' · ' . $nombre_de($cats, $f['categoria']); }
 if ($f['tipo'] && $nombre_de($tipos, $f['tipo']) !== '')          { $titulo .= ' · ' . $nombre_de($tipos, $f['tipo']); }
 
@@ -116,15 +121,18 @@ $pagina_actual = 'tienda';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($titulo) ?> - Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/cliente.css">
-    <link rel="stylesheet" href="css/sitio.css">
+    <link rel="stylesheet" href="<?= asset('css/cliente.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/sitio.css') ?>">
 </head>
 <body>
 <?php require __DIR__ . '/encabezado_cliente.php'; ?>
 
+<?php if ($arco): ?>
+    <?php cinta_arco($arco, 'Alquiler de disfraces para chicos', 'Para actos patrios como el 25 de Mayo y para cumpleaños con sus personajes favoritos. Elegí el talle por sus medidas, no por la edad.'); ?>
+<?php endif; ?>
 <main class="pagina-sitio">
     <p class="migas"><a href="index.php">Inicio</a> / <?= e($titulo) ?></p>
-    <h1><?= e($titulo) ?></h1>
+    <h1><?= $arco ? 'Todos los disfraces' : e($titulo) ?></h1>
 
     <?php if ($flash): ?><div class="alert alert-<?= e($flash['tipo']) ?>"><?= e($flash['mensaje']) ?></div><?php endif; ?>
 
@@ -209,7 +217,7 @@ $pagina_actual = 'tienda';
 </main>
 
 <?php require __DIR__ . '/pie_cliente.php'; ?>
-<script src="js/sitio.js"></script>
-<?php if ($cliente): ?><script src="js/notificaciones.js"></script><?php endif; ?>
+<script src="<?= asset('js/sitio.js') ?>"></script>
+<?php if ($cliente): ?><script src="<?= asset('js/notificaciones.js') ?>"></script><?php endif; ?>
 </body>
 </html>

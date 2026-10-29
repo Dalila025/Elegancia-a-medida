@@ -5,13 +5,14 @@ declare(strict_types=1);
  * Acciones del carrito — Elegancia a Medida
  *
  * Recibe POST con accion =
- *   agregar   id_productos, modalidad (venta|alquiler), cantidad (opcional)
+ *   agregar   id_productos, modalidad (venta|alquiler), cantidad (opcional),
+ *             talle (obligatorio si la prenda tiene guía de talles; «A medida» solo en venta)
  *   sumar     id (items_carrito) → +1
- *   restar    id → −1 (si llega a 0, se quita)
+ *   restar    id → −1 (nunca baja de 1)
  *   quitar    id
  *   deshacer  id → saca lo último agregado; solo durante CARRITO_DESHACER_MIN minutos
  * Hace falta iniciar sesión: sin sesión, manda al login y vuelve a la prenda.
- * Tabla: items_carrito.
+ * Tablas: items_carrito (y talles_producto / medidas_clientes para validar el talle).
  */
 
 require_once __DIR__ . '/config.php';
@@ -75,22 +76,29 @@ try {
             volver_a($volver, 'error', 'Esa prenda no está disponible para ' . ($modalidad === 'alquiler' ? 'alquiler' : 'venta') . '.');
         }
 
-        // Si ya estaba, se suma (sin pasar el máximo). La fecha se renueva para el aviso "Deshacer".
-        $stmt = $pdo->prepare('SELECT cantidad FROM items_carrito WHERE id_clientes = :c AND id_productos = :p AND modalidad = :m');
-        $stmt->execute([':c' => $idc, ':p' => $id_prod, ':m' => $modalidad]);
+        // Talle: obligatorio si la prenda tiene guía de talles.
+        [$talle, $err] = validar_talle_elegido($pdo, $id_prod, $modalidad, $campo('talle'), (int) $idc);
+        if ($err) {
+            volver_a('prenda.php?id=' . $id_prod . '#elegir-talle', 'error', $err);
+        }
+
+        // Si ya estaba (misma prenda, modalidad y talle), se suma sin pasar el máximo.
+        // La fecha se renueva para el aviso "Deshacer".
+        $stmt = $pdo->prepare('SELECT cantidad FROM items_carrito WHERE id_clientes = :c AND id_productos = :p AND modalidad = :m AND talle = :t');
+        $stmt->execute([':c' => $idc, ':p' => $id_prod, ':m' => $modalidad, ':t' => $talle]);
         $ya = $stmt->fetchColumn();
         if ($ya !== false && (int) $ya >= CARRITO_CANT_MAX) {
             volver_a($volver, 'error', 'Ya tenés el máximo de ' . CARRITO_CANT_MAX . ' unidades de «' . $nombre . '» en el carrito.');
         }
 
-        $pdo->prepare('INSERT INTO items_carrito (id_clientes, id_productos, modalidad, cantidad, fecha_agregado)
-                       VALUES (:c, :p, :m, :n, NOW())
+        $pdo->prepare('INSERT INTO items_carrito (id_clientes, id_productos, modalidad, talle, cantidad, fecha_agregado)
+                       VALUES (:c, :p, :m, :t, :n, NOW())
                        ON DUPLICATE KEY UPDATE cantidad = LEAST(cantidad + VALUES(cantidad), ' . CARRITO_CANT_MAX . '),
                                                fecha_agregado = NOW()')
-            ->execute([':c' => $idc, ':p' => $id_prod, ':m' => $modalidad, ':n' => $cantidad]);
+            ->execute([':c' => $idc, ':p' => $id_prod, ':m' => $modalidad, ':t' => $talle, ':n' => $cantidad]);
 
         // Para "Deshacer": cuánto se agregó en este clic.
-        $_SESSION['ultimo_agregado'] = ['clave' => "$id_prod-$modalidad", 'cantidad' => $cantidad];
+        $_SESSION['ultimo_agregado'] = ['clave' => "$id_prod-$modalidad-$talle", 'cantidad' => $cantidad];
         volver_a($volver);
     }
 
@@ -115,6 +123,7 @@ try {
             volver_a($volver);
 
         case 'restar':
+            // No baja de 1: para sacar la prenda está el botón «Quitar».
             $poner(max((int) $item['cantidad'] - 1, 1));
             volver_a($volver);
 
@@ -128,7 +137,7 @@ try {
             }
             // Se resta solo lo que se agregó en el último clic.
             $ultimo = $_SESSION['ultimo_agregado'] ?? null;
-            $resta  = ($ultimo && $ultimo['clave'] === $item['id_productos'] . '-' . $item['modalidad'])
+            $resta  = ($ultimo && $ultimo['clave'] === $item['id_productos'] . '-' . $item['modalidad'] . '-' . $item['talle'])
                 ? (int) $ultimo['cantidad'] : (int) $item['cantidad'];
             $quedan = (int) $item['cantidad'] - $resta;
             if ($quedan > 0) {

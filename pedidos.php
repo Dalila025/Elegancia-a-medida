@@ -9,11 +9,13 @@ declare(strict_types=1);
  * Entregado, Devuelto (alquiler) o Rechazar. Puede dejar una nota que el
  * cliente ve. Los cambios se procesan en actualizar_pedido.php.
  *
- * Tablas: pedidos, items_pedido, clientes, estados_pedido.
+ * Si el pedido tiene precios «a consultar», al confirmarlo hay que poner el
+ * total final (con ese total se calcula la seña del cliente).
+ *
+ * Tablas: pedidos, items_pedido, clientes, estados_pedido, pagos.
  */
 
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/funciones.php';
+require_once __DIR__ . '/funciones_pagos.php';
 iniciar_sesion();
 require_once __DIR__ . '/conexion.php';
 
@@ -63,8 +65,8 @@ $pagina_actual = 'pedidos';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
     <title>Pedidos · Panel · Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/modista.css">
-    <link rel="stylesheet" href="css/panel.css">
+    <link rel="stylesheet" href="<?= asset('css/modista.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/panel.css') ?>">
 </head>
 <body>
     <?php require __DIR__ . '/encabezado_modista.php'; ?>
@@ -96,7 +98,7 @@ $pagina_actual = 'pedidos';
                     <div>
                         <h2>Pedido <span class="codigo-seg" style="display:inline"><?= e(formatear_codigo($p['codigo'])) ?></span></h2>
                         <p class="sin-acciones" style="opacity:1">
-                            <strong><?= e($p['cliente']) ?></strong> ·
+                            <strong><a href="cliente.php?id=<?= (int) $p['id_clientes'] ?>" title="Ver ficha y medidas"><?= e($p['cliente']) ?></a></strong> ·
                             <a href="tel:<?= e(preg_replace('/[^\d+]/', '', $p['telefono'])) ?>"><?= e($p['telefono']) ?></a> ·
                             <?= e($p['email']) ?> · <?= (new DateTime($p['fecha_pedido']))->format('d/m/Y H:i') ?>
                         </p>
@@ -109,7 +111,10 @@ $pagina_actual = 'pedidos';
                     <tbody>
                     <?php foreach ($items[$idp] ?? [] as $it): ?>
                         <tr>
-                            <td><?= e($it['nombre_producto']) ?><?= (int) $it['descuento_porcentaje'] ? ' <small>(−' . (int) $it['descuento_porcentaje'] . ' %)</small>' : '' ?></td>
+                            <td><?= e($it['nombre_producto']) ?><?= (int) $it['descuento_porcentaje'] ? ' <small>(−' . (int) $it['descuento_porcentaje'] . ' %)</small>' : '' ?>
+                                <?php if ($it['talle'] !== ''): ?><br><span class="talle-panel <?= $it['talle'] === TALLE_A_MEDIDA ? 'a-medida' : '' ?>"><?= e(texto_talle($it['talle'])) ?></span><?php endif; ?>
+                                <?php if ($it['medidas'] !== ''): ?><span class="ref-catalogo">Medidas: <?= e($it['medidas']) ?></span><?php endif; ?>
+                            </td>
                             <td><?= $it['modalidad'] === 'alquiler' ? '<strong>Alquiler</strong>' : 'Venta' ?></td>
                             <td><?= (int) $it['cantidad'] ?></td>
                             <td><?= $it['precio_unitario'] === null ? 'A consultar' : e(pesos((float) $it['precio_unitario'])) ?></td>
@@ -120,7 +125,22 @@ $pagina_actual = 'pedidos';
                 </table>
 
                 <div class="pedido-datos">
-                    <span><strong>Total estimado:</strong> <?= e(pesos((float) $p['total_estimado'])) ?><?= (int) $p['tiene_a_consultar'] ? ' + a consultar' : '' ?></span>
+                    <span><strong><?= (int) $p['tiene_a_consultar'] ? 'Total estimado:' : 'Total:' ?></strong> <?= e(pesos((float) $p['total_estimado'])) ?><?= (int) $p['tiene_a_consultar'] ? ' + a consultar' : '' ?></span>
+                    <?php
+                    $sena = estado_sena($pdo, 'pedido', $idp, total_pedido_para_sena($p));
+                    if ($sena['pagado'] > 0 || in_array($est, PEDIDO_ESTADOS_CON_SENA, true)): ?>
+                        <span><strong>Seña (<?= SENA_PORCENTAJE ?> %):</strong>
+                            <?php if ($sena['requerida'] === null): ?>falta el total final
+                            <?php elseif ($sena['cubierta']): ?><span class="sena-estado ok">✓ Pagada <?= e(pesos($sena['pagado'])) ?> · <?= e(PAGO_METODOS[end($sena['pagos'])['metodo']] ?? '') ?></span>
+                            <?php else: ?><span class="sena-estado falta">Falta <?= e(pesos($sena['falta'])) ?></span>
+                            <?php endif; ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($sena['requerida'] !== null && ($sena['pagado_total'] > 0 || in_array($est, PEDIDO_ESTADOS_CON_SENA, true))):
+                        $resta = max(0, round((float) $p['total_estimado'] - $sena['pagado_total'], 2)); ?>
+                        <span><strong>Saldo:</strong> <?= $resta > 0 ? e(pesos($resta)) . ' por cobrar' : '<span class="sena-estado ok">✓ Pagado completo</span>' ?>
+                            · <a href="cliente.php?id=<?= (int) $p['id_clientes'] ?>#cuenta" class="ref-catalogo" style="display:inline">Registrar pago en la cuenta →</a></span>
+                    <?php endif; ?>
                     <?php if ($p['fecha_retiro']): ?>
                         <span><strong>Alquiler:</strong> retira <?= $fecha($p['fecha_retiro']) ?> · devuelve <?= $fecha($p['fecha_devolucion']) ?></span>
                     <?php endif; ?>
@@ -132,6 +152,13 @@ $pagina_actual = 'pedidos';
                         <input type="hidden" name="token" value="<?= e($token) ?>">
                         <input type="hidden" name="id" value="<?= $idp ?>">
                         <input type="hidden" name="volver_estado" value="<?= $filtro ?>">
+                        <?php if ($est === PEDIDO_PENDIENTE && (int) $p['tiene_a_consultar'] === 1): ?>
+                            <div class="campo">
+                                <label for="total-<?= $idp ?>">Total final (obligatorio para confirmar: hay precios «a consultar»)</label>
+                                <input type="text" id="total-<?= $idp ?>" name="total_final" inputmode="decimal" placeholder="Ej: 85000">
+                                <div class="ayuda">Con este total se calcula la seña del <?= SENA_PORCENTAJE ?> % que paga el cliente.</div>
+                            </div>
+                        <?php endif; ?>
                         <div class="campo">
                             <label for="nota-<?= $idp ?>">Nota para el cliente (opcional)</label>
                             <input type="text" id="nota-<?= $idp ?>" name="nota" maxlength="500" value="<?= e($p['nota_modista']) ?>"

@@ -46,6 +46,8 @@ try {
     $presu = $stmt->fetch() ?: null;
 
     $tarifas = obtener_tarifas($pdo);
+    // Si es un arreglo, la lista de precios sirve de referencia
+    $lista_arreglos = (int) $sol['id_tipos_servicio'] === SERVICIO_ARREGLOS ? obtener_arreglos($pdo) : [];
 } catch (PDOException $e) {
     error_log('Error al cargar presupuesto: ' . $e->getMessage());
     http_response_code(500);
@@ -79,10 +81,23 @@ $val_monto = $viejo['monto_base']    ?? ($presu ? $presu['monto_base'] : '');
 $val_fecha = $viejo['fecha_entrega'] ?? ($presu ? $presu['fecha_entrega'] : '');
 $val_obs   = $viejo['observaciones'] ?? ($presu ? $presu['observaciones'] : '');
 
+// Si la clienta pidió un arreglo de la lista de precios, ese precio va como monto base.
+$arreglo_elegido = $lista_arreglos ? arreglo_de_solicitud($lista_arreglos, (string) $sol['descripcion']) : null;
+if ($val_monto === '' && $arreglo_elegido && $arreglo_elegido['precio'] !== null) {
+    $val_monto = $arreglo_elegido['precio'];
+}
+
 $hoy        = new DateTime('today');
 $fecha_max  = (clone $hoy)->modify('+' . PLAZO_MAX_DIAS . ' days');
 $fecha_req  = DateTime::createFromFormat('!Y-m-d', $sol['fecha_requerida']);
 $dias_req   = dias_desde_hoy($fecha_req);
+
+// Si todavía no hay fecha, se sugiere la que pidió la clienta (si se puede cumplir).
+$fecha_sugerida = false;
+if ($val_fecha === '' && $dias_req >= 0 && $fecha_req <= $fecha_max) {
+    $val_fecha = $fecha_req->format('Y-m-d');
+    $fecha_sugerida = true;
+}
 
 // Rangos "desde" para mostrar las tarifas de forma legible.
 $desde = 0;
@@ -101,8 +116,8 @@ $pagina_actual = 'solicitudes';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presupuesto #<?= $id ?> · Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/modista.css">
-    <link rel="stylesheet" href="css/panel.css">
+    <link rel="stylesheet" href="<?= asset('css/modista.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/panel.css') ?>">
 </head>
 <body>
     <?php require __DIR__ . '/encabezado_modista.php'; ?>
@@ -153,7 +168,9 @@ $pagina_actual = 'solicitudes';
                         <input type="date" id="fecha_entrega" name="fecha_entrega" required
                                value="<?= e((string) $val_fecha) ?>"
                                min="<?= $hoy->format('Y-m-d') ?>" max="<?= $fecha_max->format('Y-m-d') ?>">
-                        <?php if ($dias_req >= 0): ?>
+                        <?php if ($fecha_sugerida): ?>
+                            <div class="ayuda aviso-fecha">Es la fecha que pidió la clienta. Si no llegás, cambiala por la que puedas.</div>
+                        <?php elseif ($dias_req >= 0): ?>
                             <div class="ayuda">
                                 <button type="button" class="btn-secundario" id="usar-fecha-cliente"
                                         data-fecha="<?= $fecha_req->format('Y-m-d') ?>"
@@ -177,6 +194,17 @@ $pagina_actual = 'solicitudes';
                            min="<?= MONTO_MIN ?>" max="<?= MONTO_MAX ?>" step="0.01" inputmode="decimal"
                            value="<?= e((string) $val_monto) ?>" placeholder="Ej: 45000">
                     <div class="ayuda">Precio sin recargo. El recargo por plazo se calcula solo.</div>
+                    <?php if ($arreglo_elegido): ?>
+                        <div class="aviso aviso-arreglo">
+                            La clienta eligió <strong><?= e($arreglo_elegido['nombre']) ?></strong> de tu lista
+                            (<?= e(precio_arreglo($arreglo_elegido)) ?>).
+                            <?= $arreglo_elegido['precio'] !== null
+                                ? ((int) $arreglo_elegido['precio_desde'] === 1
+                                    ? 'Puse ese precio como monto base: como es «desde», revisalo según el trabajo.'
+                                    : 'Ya está puesto como monto base; si hace falta, cambialo.')
+                                : 'Ese arreglo es «a consultar»: poné el monto según el trabajo.' ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="calculo" id="calculo" aria-live="polite">
@@ -203,6 +231,28 @@ $pagina_actual = 'solicitudes';
                 </div>
             </form>
         </section>
+
+        <?php if ($lista_arreglos): ?>
+        <!-- Referencia: lista de precios de arreglos -->
+        <section class="tarjeta">
+            <h2>Tu lista de precios de arreglos</h2>
+            <p class="ayuda" style="margin:-6px 0 10px">Tocá «Usar» para poner ese precio como monto base (después lo podés cambiar).</p>
+            <table class="tabla-tarifas">
+                <thead><tr><th>Arreglo</th><th>Precio</th><th>Demora</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($lista_arreglos as $a): ?>
+                    <?php $es_elegido = $arreglo_elegido && (int) $arreglo_elegido['id_arreglos'] === (int) $a['id_arreglos']; ?>
+                    <tr<?= $es_elegido ? ' class="arreglo-elegido"' : '' ?>>
+                        <td><?= e($a['nombre']) ?><?= $es_elegido ? ' <strong>← lo pidió la clienta</strong>' : '' ?></td>
+                        <td><?= e(precio_arreglo($a)) ?></td>
+                        <td><?= e(demora_arreglo($a)) ?></td>
+                        <td><?php if ($a['precio'] !== null): ?><button type="button" class="btn-accion accion-presupuestar usar-precio" data-precio="<?= e((string) $a['precio']) ?>">Usar</button><?php endif; ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </section>
+        <?php endif; ?>
 
         <!-- Referencia de tarifas -->
         <section class="tarjeta">
@@ -243,6 +293,14 @@ $pagina_actual = 'solicitudes';
         var $plazo = document.getElementById('plazo_dias');
         var $monto = document.getElementById('monto_base');
         var $btnCliente = document.getElementById('usar-fecha-cliente');
+        // Lista de precios de arreglos: «Usar» pone ese precio como monto base
+        document.querySelectorAll('.usar-precio').forEach(function (b) {
+            b.addEventListener('click', function () {
+                $monto.value = b.dataset.precio;
+                $monto.dispatchEvent(new Event('input', { bubbles: true }));
+                $monto.focus();
+            });
+        });
 
         function hoy() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
         function aISO(d) {

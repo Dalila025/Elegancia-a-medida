@@ -127,3 +127,83 @@
         auto();
     });
 })();
+
+/* ---------- Cinta en arco (prendas en alquiler) ----------
+ * Mueve la fila sin parar y le da a cada foto un giro y un tamaño según
+ * qué tan lejos está del centro (efecto de pared curva).
+ * Se frena con el mouse encima o con el foco del teclado; se puede arrastrar.
+ * Si la persona pidió "reducir movimiento", queda como fila deslizable. */
+(function () {
+    var reducir = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('[data-arco]').forEach(function (arco) {
+        if (reducir) { return; }
+        var pista = arco.querySelector('.arco-pista');
+        var originales = Array.prototype.slice.call(pista.children);
+        if (!originales.length) { return; }
+
+        // Se repiten las fotos hasta cubrir dos veces el ancho, para que la vuelta no se note.
+        var anchoSet = pista.scrollWidth;
+        var copias = Math.max(2, Math.ceil((arco.clientWidth * 2) / Math.max(anchoSet, 1)) + 1);
+        for (var c = 1; c < copias; c++) {
+            originales.forEach(function (it) {
+                var copia = it.cloneNode(true);
+                copia.setAttribute('aria-hidden', 'true');
+                copia.setAttribute('tabindex', '-1');
+                pista.appendChild(copia);
+            });
+        }
+        var gap = parseFloat(getComputedStyle(pista).columnGap) || 0;
+        var periodo = anchoSet - parseFloat(getComputedStyle(pista).paddingLeft) - parseFloat(getComputedStyle(pista).paddingRight) + gap;
+        var items = Array.prototype.slice.call(pista.children);
+        arco.classList.add('arco-activo');
+
+        var x = 0, velocidad = 38, pausa = false, arrastre = null, movio = false, antes = performance.now();
+
+        function dibujar() {
+            var mitad = arco.clientWidth / 2;
+            var base = arco.getBoundingClientRect().left;
+            pista.style.transform = 'translateX(' + (-x) + 'px)';
+            items.forEach(function (it) {
+                var r = it.getBoundingClientRect();
+                var d = (r.left - base + r.width / 2 - mitad) / mitad;   // -1 a la izquierda, 0 al centro, 1 a la derecha
+                d = Math.max(-1.4, Math.min(1.4, d));
+                var escala = 1 + 0.22 * d * d;
+                var giro = -d * 24;
+                it.style.transform = 'rotateY(' + giro.toFixed(2) + 'deg) scale(' + escala.toFixed(3) + ')';
+                it.style.zIndex = String(Math.round(10 + Math.abs(d) * 10));
+            });
+        }
+        function paso(ahora) {
+            var dt = Math.min(0.05, (ahora - antes) / 1000);
+            antes = ahora;
+            if (!pausa && !arrastre) { x += velocidad * dt; }
+            if (x >= periodo) { x -= periodo; }
+            if (x < 0) { x += periodo; }
+            dibujar();
+            requestAnimationFrame(paso);
+        }
+
+        arco.addEventListener('mouseenter', function () { pausa = true; });
+        arco.addEventListener('mouseleave', function () { pausa = false; });
+        arco.addEventListener('focusin', function () { pausa = true; });
+        arco.addEventListener('focusout', function () { pausa = false; });
+        arco.addEventListener('pointerdown', function (e) {
+            arrastre = { x0: e.clientX, inicio: x }; movio = false;
+            arco.classList.add('arrastrando');
+        });
+        window.addEventListener('pointermove', function (e) {
+            if (!arrastre) { return; }
+            var dx = e.clientX - arrastre.x0;
+            if (Math.abs(dx) > 5) { movio = true; }
+            x = arrastre.inicio - dx;
+        });
+        window.addEventListener('pointerup', function () {
+            if (!arrastre) { return; }
+            arrastre = null; arco.classList.remove('arrastrando');
+        });
+        // Si se arrastró, no abrir la prenda al soltar.
+        arco.addEventListener('click', function (e) { if (movio) { e.preventDefault(); movio = false; } }, true);
+
+        requestAnimationFrame(paso);
+    });
+})();

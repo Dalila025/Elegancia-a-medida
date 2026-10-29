@@ -38,6 +38,18 @@ function fecha_maxima(): DateTime
 }
 
 
+/**
+ * Dirección de un CSS o JS con la fecha del archivo al final (css/sitio.css?v=1730…).
+ * Así, cuando se actualiza el archivo, el navegador baja el nuevo en vez de
+ * usar el que tenía guardado (no hace falta Ctrl + F5).
+ */
+function asset(string $ruta): string
+{
+    $archivo = __DIR__ . '/' . $ruta;
+    return e($ruta . (is_file($archivo) ? '?v=' . filemtime($archivo) : ''));
+}
+
+
 /** Días enteros desde hoy hasta $fecha (0 = hoy). */
 function dias_desde_hoy(DateTime $fecha): int
 {
@@ -96,6 +108,42 @@ function tarifa_para_plazo(PDO $pdo, int $dias): ?array
     $stmt->execute([':dias' => $dias]);
     $fila = $stmt->fetch();
     return $fila ?: null;
+}
+
+
+/**
+ * Desde cuántos días de plazo ya no hay recargo (según tarifas_plazo), o null
+ * si todas las tarifas tienen recargo. Ej.: Urgente hasta 7 (+40 %),
+ * Rápido hasta 15 (+20 %), Normal sin límite (0 %) → 16.
+ */
+function dias_sin_recargo(array $tarifas): ?int
+{
+    $desde = 0;
+    foreach ($tarifas as $t) {   // vienen ordenadas por dias_hasta (la «sin límite» al final)
+        if ((float) $t['recargo_porcentaje'] <= 0) {
+            return $desde;
+        }
+        if ($t['dias_hasta'] === null) {
+            return null;
+        }
+        $desde = (int) $t['dias_hasta'] + 1;
+    }
+    return null;
+}
+
+/**
+ * Fecha sugerida para la solicitud: la primera sin recargo y, si es un arreglo
+ * de la lista que tarda más, la de su demora. null si no hay plazo sin recargo
+ * o queda después de la fecha máxima.
+ */
+function fecha_sugerida_sin_recargo(array $tarifas, int $demora_dias = 0): ?DateTime
+{
+    $dias = dias_sin_recargo($tarifas);
+    if ($dias === null) {
+        return null;
+    }
+    $f = (new DateTime('today'))->modify('+' . max($dias, $demora_dias) . ' days');
+    return $f <= fecha_maxima() ? $f : null;
 }
 
 
@@ -782,6 +830,20 @@ function enlace_whatsapp(string $numero, string $mensaje = ''): ?string
 }
 
 
+/**
+ * WhatsApp de una clienta: su teléfono suele estar cargado sin el código del país
+ * («11 4321-8765» o «0370 154-123456»), así que se le agrega el 54 9 de Argentina.
+ */
+function enlace_whatsapp_cliente(string $telefono, string $mensaje = ''): ?string
+{
+    $d = preg_replace('/\D/', '', $telefono);
+    if (!str_starts_with($d, '54')) {
+        $d = '549' . ltrim($d, '0');
+    }
+    return enlace_whatsapp($d, $mensaje);
+}
+
+
 /** Usuario de Instagram limpio (sin @ ni dirección), o ''. */
 function usuario_instagram(string $texto): string
 {
@@ -830,7 +892,7 @@ function cantidad_carrito(PDO $pdo, int $id_clientes): int
 function ultimo_agregado(PDO $pdo, int $id_clientes): ?array
 {
     $stmt = $pdo->prepare(
-        'SELECT c.id_items_carrito, c.modalidad, c.cantidad, p.nombre,
+        'SELECT c.id_items_carrito, c.modalidad, c.talle, c.cantidad, p.nombre,
                 TIMESTAMPDIFF(SECOND, NOW(), c.fecha_agregado + INTERVAL ' . CARRITO_DESHACER_MIN . ' MINUTE) AS segundos
            FROM items_carrito c INNER JOIN productos p ON p.id_productos = c.id_productos
           WHERE c.id_clientes = :id AND c.fecha_agregado > NOW() - INTERVAL ' . CARRITO_DESHACER_MIN . ' MINUTE
@@ -864,14 +926,16 @@ function notificar_pedido(PDO $pdo, int $id_pedido, int $estado_nuevo): void
         return;
     }
     try {
-        $stmt = $pdo->prepare('SELECT codigo, nota_modista FROM pedidos WHERE id_pedidos = :id');
+        $stmt = $pdo->prepare('SELECT codigo, nota_modista, total_estimado, tiene_a_consultar FROM pedidos WHERE id_pedidos = :id');
         $stmt->execute([':id' => $id_pedido]);
         $p = $stmt->fetch();
         if (!$p) {
             return;
         }
         [$titulo, $mensaje] = NOTIFICACIONES_PEDIDO[$estado_nuevo];
-        $mensaje = trim(strtr($mensaje, ['{codigo}' => formatear_codigo($p['codigo'])])
+        $sena = (int) $p['tiene_a_consultar'] === 1 ? 'a confirmar'
+              : pesos(round((float) $p['total_estimado'] * SENA_PORCENTAJE / 100, 2));
+        $mensaje = trim(strtr($mensaje, ['{codigo}' => formatear_codigo($p['codigo']), '{sena}' => $sena])
                  . ($p['nota_modista'] !== '' ? ' Nota: ' . $p['nota_modista'] : ''));
         $pdo->prepare('INSERT INTO notificaciones (id_pedidos, titulo, mensaje) VALUES (:id, :t, :m)')
             ->execute([':id' => $id_pedido, ':t' => $titulo, ':m' => mb_substr($mensaje, 0, 500)]);
@@ -939,3 +1003,13 @@ function enlace_seguro(string $url): string
     }
     return '';
 }
+
+
+// Guía de talles y medidas de las clientas
+require_once __DIR__ . '/funciones_medidas.php';
+
+// Lista de precios de arreglos
+require_once __DIR__ . '/funciones_arreglos.php';
+
+// Taller: etapas de cada trabajo y turnos de prueba
+require_once __DIR__ . '/funciones_taller.php';

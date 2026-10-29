@@ -40,6 +40,8 @@ $ig_pie      = usuario_instagram($sitio_pie['instagram'] ?? '');
                 <?php if ($cliente_pie): ?>
                     <li><a href="carrito.php">Carrito</a></li>
                     <li><a href="mis_pedidos.php">Mis pedidos</a></li>
+                    <li><a href="mis_medidas.php">Mis medidas</a></li>
+                    <li><a href="mi_cuenta.php">Estado de cuenta</a></li>
                     <li><a href="mis_solicitudes.php">Mis solicitudes</a></li>
                 <?php else: ?>
                     <li><a href="login.php">Iniciar sesión</a></li>

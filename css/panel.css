@@ -235,3 +235,240 @@
 .logo-preview img { display: block; max-width: 220px; max-height: 76px; width: auto; height: auto; object-fit: contain; }
 .btn-quitar-archivo { margin-left: 8px; }
 .brand-logo { height: 46px; width: auto; max-width: 160px; object-fit: contain; }
+
+/* ---------- Señas ---------- */
+.modo-cobro { margin: 16px 0 0; font-size: .85rem; color: var(--p-marron, #6b5a4a); }
+.lista-senas { display: flex; flex-direction: column; gap: 10px; }
+.sena-fila { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;
+             padding: 12px 14px; border: 1px solid #eee3d3; border-radius: 10px; }
+.sena-info { display: flex; flex-direction: column; gap: 3px; font-size: .9rem; min-width: 240px; }
+.sena-aviso { color: #8e5b1e; font-size: .84rem; }
+.sena-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sena-form input[type="text"] { width: 130px; padding: 7px 10px; }
+.sena-form input[name="observaciones"] { width: 170px; }
+.sena-form select { width: auto; min-width: 0; padding: 7px 10px; }
+.sena-estado { display: inline-block; margin-top: 4px; font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.sena-estado.ok { background: #e8f8f0; color: #1e7e34; }
+.sena-estado.falta { background: #eef6fd; color: #0b4f8a; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Guía de talles (producto) ---------- */
+.guia-talles { margin-top: 18px; }
+.tabla-scroll { overflow-x: auto; }
+.tabla-talles { min-width: 640px; }
+.tabla-talles th { font-size: .8rem; white-space: nowrap; cursor: help; }
+.tabla-talles td input[type="text"] { width: 100%; min-width: 60px; padding: 6px 8px; text-align: center; }
+.tabla-talles td:first-child input { min-width: 64px; font-weight: 600; }
+.fila-talle-oculta { display: none; }
+#mas-talles { margin-top: 10px; }
+.tabla-talles { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tabla-talles th, .tabla-talles td { padding: 6px 4px; border-bottom: 1px solid #eee3d3; text-align: left; }
+.talle-panel { display: inline-block; margin-top: 3px; font-size: .78rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: #f3e7d6; color: #6b4a1f; }
+.talle-panel.a-medida { background: #231f20; color: #fff; }
+.grilla-medidas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.lista-ficha { margin: 0; padding-left: 18px; line-height: 1.8; font-size: .92rem; }
+.buscar-clientas { display: flex; gap: 6px; }
+.buscar-clientas input { padding: 8px 12px; min-width: 240px; border: 1px solid rgba(191,157,92,.5); border-radius: 8px; font: inherit; }
+
+/* ---------- Gastos ---------- */
+.gastos-barra { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
+.mes-nav { display: flex; align-items: center; gap: 10px; }
+.mes-nav h2 { margin: 0; min-width: 190px; text-align: center; font-size: 1.25rem; }
+.mes-nav .btn-secundario { padding: 6px 14px; font-size: 1.1rem; line-height: 1; }
+.gastos-filtro { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.gastos-filtro select { min-width: 190px; width: auto; }
+.resumen-gastos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
+.cifra { background: #fff; border: 1px solid #eee3d3; border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.cifra span { font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8a7b6b; }
+.cifra strong { font-size: 1.6rem; }
+.cifra strong.negativo { color: #b03a2e; }
+.cifra strong.positivo { color: #1e7e34; }
+.cifra small { font-size: .8rem; color: #8a817d; }
+.cifra small.sube { color: #b03a2e; }
+.cifra small.baja { color: #1e7e34; }
+.gastos-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
+.gastos-grid .tarjeta { margin-top: 0; }
+.barras-rubro { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.barras-rubro a { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px 10px; border-radius: 10px; color: inherit; text-decoration: none; }
+.barras-rubro a:hover, .barras-rubro a.activo { background: #faf5ee; }
+.rubro-nombre { font-weight: 600; }
+.rubro-nombre small { color: #8a817d; font-weight: 400; }
+.rubro-monto { font-size: .88rem; color: #5a5350; white-space: nowrap; }
+.barra { grid-column: 1 / -1; height: 8px; border-radius: 999px; background: #f1e8dc; overflow: hidden; }
+.barra span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #bf9d5c, #9c5f68); }
+.tabla-gastos td.num, .tabla-gastos th.num { text-align: right; white-space: nowrap; }
+.tabla-gastos tfoot td { border-top: 2px solid #eee3d3; font-weight: 700; }
+.tabla-gastos .fila-editando { background: #fff8e6; }
+.acciones-gasto { display: flex; gap: 6px; justify-content: flex-end; }
+.acciones-gasto form { margin: 0; }
+.rubros-lista { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.rubro-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border: 1px solid #e3d5c2; border-radius: 999px; background: #fff; font-size: .9rem; }
+.rubro-chip.oculto { opacity: .55; border-style: dashed; }
+.rubro-chip form { display: inline-flex; gap: 4px; margin: 0; }
+.rubro-chip button { border: 0; background: #f6efe5; border-radius: 999px; padding: 3px 10px; font: inherit; font-size: .78rem; cursor: pointer; color: #6b5a4a; }
+.rubro-chip button:hover { background: #ecdcc4; }
+.rubro-nuevo { display: flex; gap: 8px; flex-wrap: wrap; }
+.rubro-nuevo input[type="text"] { max-width: 300px; }
+@media (max-width: 900px) {
+    .resumen-gastos, .gastos-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- Cuenta corriente ---------- */
+.saldo-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+.saldo-badge.debe { background: #fdecea; color: #b03a2e; }
+.saldo-badge.favor { background: #eef6fd; color: #0b4f8a; }
+.saldo-badge.al-dia { background: #e8f8f0; color: #1e7e34; }
+.txt-debe { color: #b03a2e; }
+.txt-favor { color: #0b4f8a; }
+#cuenta h3 { margin: 22px 0 8px; font-size: 1rem; }
+.cobro-form { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr auto; gap: 10px; align-items: end; }
+.cobro-form .campo { margin: 0; }
+.total-adeudado { margin: 0 0 10px; font-size: .95rem; }
+.buscar-clientas { align-items: center; flex-wrap: wrap; }
+@media (max-width: 900px) { .cobro-form { grid-template-columns: 1fr; } }
+.form-devolver { margin-top: 6px; } .form-devolver button { font-size: .75rem; }
+.tabla-arreglos td input[type="text"] { text-align: left; min-width: 90px; }
+.tabla-arreglos td:nth-child(2) input { min-width: 200px; }
+.tabla-arreglos .fila-oculta { opacity: .55; }
+.arreglo-nuevo { display: grid; grid-template-columns: 1.3fr 1.6fr .8fr .7fr auto auto; gap: 10px; align-items: end; }
+.arreglo-nuevo .campo { margin: 0; }
+@media (max-width: 900px) { .arreglo-nuevo { grid-template-columns: 1fr; } }
+
+/* ---------- Menú del panel: «Sitio y catálogo» ---------- */
+.nav-mas { position: relative; }
+.nav-mas summary { list-style: none; cursor: pointer; user-select: none; }
+.nav-mas summary::-webkit-details-marker { display: none; }
+.nav-mas summary.activo { background: var(--p-rosa); color: #fff; border-color: var(--p-rosa); }
+.nav-mas-panel { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 220px; display: flex; flex-direction: column; gap: 4px;
+                 padding: 8px; border-radius: 12px; background: #2a2526; border: 1px solid rgba(191,157,92,.45); box-shadow: 0 14px 30px rgba(0,0,0,.35); }
+.nav-mas-panel .btn-outline { border-color: transparent; text-align: left; }
+@media (max-width: 700px) { .nav-mas-panel { position: static; margin-top: 6px; } }
+
+/* ---------- Taller ---------- */
+.contenedor-ancho { max-width: 1400px; }
+.agenda { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.agenda li { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid #eee3d3; border-radius: 12px; background: #fff; }
+.agenda li.hoy { border-color: var(--p-rosa, #b9848c); background: #fbf2f3; }
+.agenda-fecha { display: flex; flex-direction: column; align-items: center; min-width: 54px; padding: 4px 6px; border-radius: 8px; background: #231f20; color: #fff; }
+.agenda-fecha strong { font-size: 1rem; }
+.agenda-fecha span { font-size: .8rem; color: #e2c99e; }
+.agenda-info { font-size: .9rem; display: flex; flex-direction: column; }
+.agenda-acciones { display: flex; gap: 4px; }
+.agenda-acciones form { margin: 0; }
+.tablero { display: grid; grid-template-columns: repeat(6, minmax(200px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; margin-top: 16px; align-items: start; }
+.tablero-col { background: #f3ece2; border-radius: 14px; padding: 12px; min-height: 160px; }
+.tablero-col h3 { margin: 0 0 10px; font-size: .92rem; display: flex; justify-content: space-between; align-items: center; }
+.tablero-vacio { color: #b3a594; text-align: center; margin: 24px 0; }
+.trabajo-card { background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 10px; border: 1px solid #eadfce; border-left: 4px solid #bf9d5c; box-shadow: 0 2px 6px rgba(0,0,0,.04); }
+.trabajo-card.urgente { border-left-color: #c0392b; }
+.trabajo-card p { margin: 0 0 4px; font-size: .86rem; }
+.tc-prenda { font-weight: 700; font-size: .95rem !important; }
+.tc-cliente a { color: inherit; }
+.tc-entrega { color: #6b5a4a; }
+.tc-entrega span { margin-left: 4px; font-weight: 700; }
+.trabajo-card.urgente .tc-entrega span { color: #c0392b; }
+.tc-turno { color: #0b4f8a; font-weight: 600; }
+.tc-acciones summary { cursor: pointer; font-size: .8rem; font-weight: 700; color: #9c5f68; margin-top: 6px; }
+.tc-acciones form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eadfce; }
+.tc-acciones label { font-size: .78rem; font-weight: 700; }
+.tc-acciones select, .tc-acciones input { width: 100%; padding: 6px 8px; font-size: .85rem; min-width: 0; }
+.tc-fecha-hora { display: grid; grid-template-columns: 1fr; gap: 6px; }
+
+/* Presupuesto de arreglo pedido desde la lista de precios */
+.aviso-arreglo { margin-top: 8px; }
+.tabla-tarifas tr.arreglo-elegido td { background: #f6ece0; }
+
+/* Turnos: para qué es cada uno */
+.motivo-turno { display: inline-block; align-self: flex-start; font-size: 0.72rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; margin-right: 6px; background: #efe6f0; color: #6b3f5e; }
+.motivo-turno.motivo-traer   { background: #fbe9d3; color: #8a4b12; }
+.motivo-turno.motivo-retirar { background: #e2efe3; color: #2f6b3a; }
+.tc-falta { margin: 6px 0 0; font-size: 0.82rem; font-weight: 700; color: #a2462f; }
+.tc-wa { display: inline-block; margin-top: 4px; font-size: 0.85rem; color: #1f7a45; font-weight: 600; }
+.agenda li { grid-template-columns: auto 1fr; }
+.agenda-acciones { grid-column: 1 / -1; flex-wrap: wrap; align-items: flex-start; }
+.tc-medidas { font-size: .82rem; font-weight: 600; color: #8a4b12; }
+.tc-check { display: flex; gap: 6px; align-items: center; font-size: .85rem; font-weight: 400; margin: 4px 0; }
+.retoque summary { list-style: none; cursor: pointer; }
+.retoque summary::-webkit-details-marker { display: none; }
+.retoque[open] { flex-basis: 100%; }
+.retoque .form-panel { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+.retoque .form-panel input[type="text"] { flex: 1 1 200px; }
+.taller-cabeza-acciones { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.tc-origen { font-size: .78rem; color: #0b4f8a; font-weight: 600; }
+.tc-medidas a { color: inherit; }
+.tc-link { margin: 4px 0 0; font-size: .82rem; }
+.tc-link a { color: #6b3f5e; }
+/* Horarios para recibir prendas */
+.horarios-resumen { background: #f6ece0; border-radius: 10px; padding: 8px 12px; display: inline-block; }
+.grilla-scroll { overflow-x: auto; }
+.grilla-horarios { border-collapse: collapse; font-size: .85rem; min-width: 560px; }
+.grilla-horarios th, .grilla-horarios td { padding: 2px 4px; text-align: center; }
+.grilla-horarios tbody th { text-align: right; padding-right: 10px; font-weight: 600; color: #6b6461; white-space: nowrap; }
+.col-toggle { border: 1px solid #e0d2bf; background: #fff; border-radius: 8px; padding: 4px 10px; font-weight: 700; cursor: pointer; }
+.col-toggle:hover { background: #f6ece0; }
+.celda-hora { display: block; width: 52px; height: 24px; border-radius: 6px; background: #f3ece2; cursor: pointer; position: relative; }
+.celda-hora.on { background: #9c5f68; }
+.celda-hora input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
+.celda-hora:has(input:focus-visible) { outline: 2px solid #231f20; outline-offset: 1px; }
+.form-linea { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.form-linea input[type="text"] { flex: 1 1 220px; }
+.dias-cerrados { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.dias-cerrados li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid #eee3d3; border-radius: 10px; }
+.dias-cerrados form { margin: 0; }
+.aviso-fecha { color: #8a4b12; font-weight: 600; }
+.form-linea input[type="date"] { width: auto; flex: 0 0 auto; }
+
+/* Costos de un trabajo */
+.volver-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.costos-cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 14px; }
+.costos-cifras .cifra { background: #faf6f0; border: 1px solid #eee3d3; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.costos-cifras .cifra span { font-size: .85rem; color: #6b6461; }
+.costos-cifras .cifra strong { font-size: 1.4rem; }
+.costos-cifras .cifra small { font-size: .8rem; color: #6b6461; }
+.costos-cifras .positivo { color: #1f7a45; }
+.costos-cifras .negativo { color: #b03a2e; }
+.lista-gastos-trabajo { list-style: none; margin: 0; padding: 0; }
+.lista-gastos-trabajo li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee3d3; flex-wrap: wrap; }
+.lista-gastos-trabajo .ref-catalogo { display: block; }
+.lgt-derecha { display: flex; align-items: center; gap: 6px; }
+.lgt-derecha form { margin: 0; }
+.lgt-total { font-size: 1.05rem; border-bottom: 0 !important; }
+.gasto-trabajo { font-size: .8rem; color: #6b3f5e; }
+.tc-costos { margin: 4px 0 0; font-size: .82rem; }
+.tc-costos a { color: #1f5f8a; }
+
+/* Turnos bien visibles para la modista */
+.turno-modista { margin-top: 8px; padding: 10px 12px; border-radius: 12px; border: 2px solid #e8b04c; background: #fff6e3; white-space: normal; text-align: left; }
+.turno-modista.motivo-retirar { border-color: #4caf73; background: #eaf7ee; }
+.turno-modista.motivo-prueba { border-color: #b98bb0; background: #f6eef5; }
+.turno-modista.es-hoy { box-shadow: 0 0 0 3px rgba(232, 176, 76, .35); }
+.turno-modista p { margin: 0 0 4px; }
+.tm-titulo { font-size: .9rem; color: #231f20; line-height: 1.35; }
+.tm-titulo strong { color: #8a4b12; }
+.turno-modista.motivo-retirar .tm-titulo strong { color: #1f6b3a; }
+.turno-modista.es-hoy .tm-titulo strong { text-transform: none; font-size: 1rem; }
+.tm-nuevo { display: inline-block; margin-left: 4px; font-size: .72rem; font-weight: 700; background: #231f20; color: #fff; padding: 1px 8px; border-radius: 999px; }
+.tm-quien { font-weight: 600; font-size: .88rem; }
+.tm-nota { font-size: .8rem; color: #5b524f; }
+.tm-botones { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.tm-botones form { margin: 0; }
+.tm-ok { background: #1f7a45; color: #fff; border: 0; border-radius: 999px; padding: 7px 14px; font-weight: 700; font-size: .85rem; cursor: pointer; }
+.tm-ok:hover, .tm-ok:focus-visible { background: #17633a; }
+.tm-wa { font-size: .82rem; font-weight: 600; color: #1f7a45; }
+.espera-turno { display: block; margin-top: 8px; padding: 6px 10px; border-radius: 10px; background: #f3ece2; color: #6b4a1e; font-size: .8rem; font-weight: 600; white-space: normal; }
+.ir-taller { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 999px; background: #231f20; color: #fff !important; font-size: .78rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.ir-taller:hover { background: #9c5f68; }
+.turnos-cerca { background: #fff; border: 2px solid #e8b04c; border-radius: 16px; padding: 16px 18px; margin-bottom: 18px; }
+.turnos-cerca h2 { margin: 0 0 10px; font-size: 1.1rem; }
+.turnos-cerca-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.turnos-cerca-lista .turno-modista { margin: 0; }
+.trabajo-card .turno-modista { padding: 8px 10px; }
+.trabajo-card .tm-ok { padding: 6px 10px; font-size: .8rem; }
+td .turno-modista { max-width: 210px; min-width: 180px; }
+
+/* Botón «Siguiente» de cada tarjeta del Taller */
+.tc-siguiente { margin: 8px 0 0; }
+.tc-siguiente button { width: 100%; background: #231f20; color: #fff; border: 0; border-radius: 999px; padding: 8px 12px; font-weight: 700; font-size: .85rem; cursor: pointer; }
+.tc-siguiente button:hover, .tc-siguiente button:focus-visible { background: #9c5f68; }
+.tc-fin { margin: 8px 0 0; font-size: .78rem; color: #1f6b3a; font-weight: 600; }

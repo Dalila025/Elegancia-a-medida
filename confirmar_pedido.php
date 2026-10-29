@@ -53,7 +53,7 @@ try {
 
     // Carrito con los datos de hoy de cada prenda (bloqueado mientras se confirma)
     $stmt = $pdo->prepare(
-        'SELECT ic.id_items_carrito, ic.modalidad, ic.cantidad,
+        'SELECT ic.id_items_carrito, ic.modalidad, ic.talle, ic.cantidad,
                 p.id_productos, p.nombre, p.precio_venta, p.precio_alquiler, p.descuento_porcentaje, p.oferta_hasta,
                 (p.activo = 1 AND c.activo = 1 AND t.activo = 1
                  AND IF(ic.modalidad = \'alquiler\', p.en_alquiler, p.en_venta) = 1) AS disponible
@@ -137,11 +137,19 @@ try {
         ]);
     $id_pedido = (int) $pdo->lastInsertId();
 
-    $ins = $pdo->prepare('INSERT INTO items_pedido (id_pedidos, id_productos, nombre_producto, modalidad, cantidad, precio_unitario, descuento_porcentaje)
-                          VALUES (:p, :prod, :nom, :m, :n, :precio, :desc)');
+    // Si algo es «A medida», se copian las medidas de la clienta de este momento.
+    $medidas_txt = '';
+    if (in_array(TALLE_A_MEDIDA, array_column($items, 'talle'), true)) {
+        $med = medidas_vigentes($pdo, (int) $cliente['id_clientes']);
+        $medidas_txt = $med ? texto_medidas($med) : '';
+    }
+
+    $ins = $pdo->prepare('INSERT INTO items_pedido (id_pedidos, id_productos, nombre_producto, modalidad, talle, medidas, cantidad, precio_unitario, descuento_porcentaje)
+                          VALUES (:p, :prod, :nom, :m, :talle, :medidas, :n, :precio, :desc)');
     foreach ($items as $it) {
         $ins->execute([
             ':p' => $id_pedido, ':prod' => $it['id_productos'], ':nom' => $it['nombre'], ':m' => $it['modalidad'],
+            ':talle' => $it['talle'], ':medidas' => $it['talle'] === TALLE_A_MEDIDA ? $medidas_txt : '',
             ':n' => $it['cantidad'], ':precio' => $it['precio'] === null ? null : number_format($it['precio'], 2, '.', ''),
             ':desc' => $it['desc'],
         ]);

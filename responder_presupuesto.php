@@ -114,6 +114,6 @@ volver_detalle(
     $codigo,
     'ok',
     $accion === 'aceptar'
-        ? '¡Listo! Aceptaste el presupuesto. La modista ya puede empezar con tu pedido.'
+        ? '¡Listo! Aceptaste el presupuesto. Ahora elegí qué día acercarte al taller.'
         : 'Registramos que no aceptaste el presupuesto. ¡Gracias por avisarnos!'
 );

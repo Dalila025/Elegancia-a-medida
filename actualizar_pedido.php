@@ -5,6 +5,7 @@ declare(strict_types=1);
  * Cambio de estado de un pedido (panel) — Elegancia a Medida
  * Recibe POST de pedidos.php: id, estado_nuevo y una nota opcional para el cliente.
  * Solo permite los cambios de TRANSICIONES_PEDIDO (config.php) y avisa al cliente.
+ * Al confirmar un pedido con precios «a consultar», recibe también total_final.
  * Tabla: pedidos.
  */
 
@@ -43,7 +44,7 @@ if (mb_strlen($nota) > 500) {
 }
 
 try {
-    $stmt = $pdo->prepare('SELECT codigo, id_estados_pedido FROM pedidos WHERE id_pedidos = :id');
+    $stmt = $pdo->prepare('SELECT codigo, id_estados_pedido, tiene_a_consultar FROM pedidos WHERE id_pedidos = :id');
     $stmt->execute([':id' => $id]);
     $p = $stmt->fetch();
     if (!$p) {
@@ -55,6 +56,16 @@ try {
         volver($volver, 'error', 'El pedido está «' . (ESTADOS_PEDIDO[$actual] ?? '?') . '» y no puede pasar a «' . (ESTADOS_PEDIDO[$nuevo] ?? '?') . '».');
     }
 
+    // Si hay precios "a consultar", para confirmar hace falta el total final
+    // (con ese total se calcula la seña del cliente).
+    $total_final = null;
+    if ($nuevo === PEDIDO_CONFIRMADO && (int) $p['tiene_a_consultar'] === 1) {
+        [$total_final, $err] = leer_precio_opcional(isset($_POST['total_final']) && is_string($_POST['total_final']) ? $_POST['total_final'] : '', 'total final');
+        if ($err || $total_final === null) {
+            volver($volver, 'error', $err ?? 'El pedido tiene precios «a consultar»: indicá el total final para confirmarlo.');
+        }
+    }
+
     // El WHERE con el estado actual evita pisar un cambio hecho desde otra pestaña
     // (o una cancelación del cliente justo en ese momento).
     $upd = $pdo->prepare('UPDATE pedidos SET id_estados_pedido = :n, nota_modista = :nota, fecha_actualizacion = NOW()
@@ -62,6 +73,10 @@ try {
     $upd->execute([':n' => $nuevo, ':nota' => $nota, ':id' => $id, ':a' => $actual]);
     if ($upd->rowCount() === 0) {
         volver($volver, 'error', 'El pedido cambió mientras tanto (quizás el cliente lo canceló). Revisalo de nuevo.');
+    }
+    if ($total_final !== null) {
+        $pdo->prepare('UPDATE pedidos SET total_estimado = :t, tiene_a_consultar = 0 WHERE id_pedidos = :id')
+            ->execute([':t' => $total_final, ':id' => $id]);
     }
 
     notificar_pedido($pdo, $id, $nuevo);

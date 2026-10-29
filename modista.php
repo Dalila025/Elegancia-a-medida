@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
+require_once __DIR__ . '/funciones_pagos.php';
 
 iniciar_sesion();
 
@@ -56,8 +57,12 @@ $sql = "
         p.comentario_cliente,
         p.fecha_entrega,
         p.plazo_dias,
+        p.id_presupuestos,
         p.monto_total,
         p.recargo_porcentaje,
+        (SELECT e.nombre FROM avances_taller a INNER JOIN etapas_taller e ON e.id_etapas_taller = a.id_etapas_taller
+          WHERE a.id_solicitudes_presupuesto = s.id_solicitudes_presupuesto
+          ORDER BY a.fecha DESC, a.id_avances_taller DESC LIMIT 1) AS etapa_taller,
         (SELECT n.leida FROM notificaciones n
           WHERE n.id_solicitudes_presupuesto = s.id_solicitudes_presupuesto
           ORDER BY n.id_notificaciones DESC LIMIT 1) AS ultimo_aviso_leido
@@ -90,6 +95,11 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $solicitudes = $stmt->fetchAll();
+    // Turnos: el próximo de cada trabajo en el taller, y los de hoy y mañana (arriba de todo)
+    $turno_de = proximos_turnos_por_trabajo($pdo, array_column(
+        array_filter($solicitudes, fn($s) => (int) $s['id_estados_solicitud'] === ESTADO_EN_PROCESO), 'id_solicitudes_presupuesto'));
+    $manana = date('Y-m-d', strtotime('+1 day'));
+    $turnos_cerca = array_values(array_filter(agenda_turnos($pdo, 30), fn($t) => substr($t['fecha_hora'], 0, 10) <= $manana));
 } catch (PDOException $e) {
     error_log('Error al consultar solicitudes: ' . $e->getMessage());
     http_response_code(500);
@@ -134,8 +144,8 @@ $pagina_actual = 'solicitudes';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Modista · Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/modista.css">
-    <link rel="stylesheet" href="css/panel.css">
+    <link rel="stylesheet" href="<?= asset('css/modista.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/panel.css') ?>">
 </head>
 <body>
     <?php require __DIR__ . '/encabezado_modista.php'; ?>
@@ -190,6 +200,16 @@ $pagina_actual = 'solicitudes';
             <div class="flash <?= $flash['tipo'] === 'ok' ? 'flash-ok' : 'flash-error' ?>" role="status">
                 <?= e($flash['mensaje']) ?>
             </div>
+        <?php endif; ?>
+
+        <?php if ($turnos_cerca): ?>
+            <!-- Turnos de hoy y mañana: bien a la vista -->
+            <section class="turnos-cerca">
+                <h2>📅 Turnos de hoy y mañana</h2>
+                <div class="turnos-cerca-lista">
+                    <?php foreach ($turnos_cerca as $tc) { mostrar_turno_modista($pdo, $tc, $token, 'modista.php', true); } ?>
+                </div>
+            </section>
         <?php endif; ?>
 
         <!-- Resumen -->
@@ -288,6 +308,13 @@ $pagina_actual = 'solicitudes';
                                         <?php elseif ($estadoCod === ESTADO_PRESUPUESTADO): ?>
                                             <span class="resp-cliente espera">Esperando respuesta del cliente</span>
                                         <?php endif; ?>
+                                        <?php
+                                        $sena = estado_sena($pdo, 'presupuesto', (int) $s['id_presupuestos'], (float) $s['monto_total']);
+                                        if ($sena['pagado'] > 0 || in_array($estadoCod, SOLICITUD_ESTADOS_CON_SENA, true)): ?>
+                                            <span class="sena-estado <?= $sena['cubierta'] ? 'ok' : 'falta' ?>">
+                                                <?= $sena['cubierta'] ? '✓ Seña pagada' : 'Seña: falta ' . e(pesos((float) $sena['falta'])) ?>
+                                            </span>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span class="sin-acciones">—</span>
                                     <?php endif; ?>
@@ -296,6 +323,14 @@ $pagina_actual = 'solicitudes';
                                     <span class="estado-badge estado-<?= $estadoCod ?>">
                                         <?= e($estadoTxt) ?>
                                     </span>
+                                    <?php if ($estadoCod === ESTADO_EN_PROCESO): ?>
+                                        <?php if (isset($turno_de[$id])): ?>
+                                            <?php mostrar_turno_modista($pdo, $turno_de[$id], $token, 'modista.php'); ?>
+                                        <?php elseif ($s['etapa_taller'] === null): ?>
+                                            <span class="espera-turno">⏳ Esperando que la clienta elija cuándo te trae la prenda</span>
+                                        <?php endif; ?>
+                                        <a class="ir-taller" href="taller.php">✂ Taller: <?= e($s['etapa_taller'] ?? 'por empezar') ?> →</a>
+                                    <?php endif; ?>
                                     <?php if ($s['ultimo_aviso_leido'] !== null): ?>
                                         <span class="aviso-cliente <?= (int) $s['ultimo_aviso_leido'] === 1 ? 'visto' : '' ?>">
                                             <?= (int) $s['ultimo_aviso_leido'] === 1 ? '✓ El cliente vio el aviso' : 'Aviso sin ver' ?>

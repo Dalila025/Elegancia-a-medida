@@ -3,7 +3,7 @@
  * Encabezado común del panel de la modista.
  * Antes de incluirlo definir:
  *   $usuario       → array de requerir_modista()
- *   $pagina_actual → 'solicitudes' | 'pedidos' | 'productos' | 'categorias' | 'portada' | 'tarifas' | 'sitio' | 'clave'
+ *   $pagina_actual → 'solicitudes' | 'taller' | 'pedidos' | 'clientes' | 'senas' | 'gastos' | 'productos' | 'arreglos' | 'categorias' | 'portada' | 'tarifas' | 'sitio' | 'clave'
  *   $pdo           → conexión
  */
 $pagina_actual = $pagina_actual ?? '';
@@ -25,16 +25,29 @@ $logo_panel = url_logo($pdo);
             </div>
         </div>
         <nav class="nav-panel" aria-label="Menú del panel">
-            <?php if (!$obligatorio_clave): ?>
-                <a href="modista.php"    class="btn-outline <?= $pagina_actual === 'solicitudes' ? 'activo' : '' ?>">Solicitudes</a>
-                <a href="pedidos.php"    class="btn-outline <?= $pagina_actual === 'pedidos'     ? 'activo' : '' ?>">Pedidos<?= $pendientes_panel ? ' <span class="globo-panel">' . $pendientes_panel . '</span>' : '' ?></a>
-                <a href="productos.php"  class="btn-outline <?= $pagina_actual === 'productos'   ? 'activo' : '' ?>">Catálogo</a>
-                <a href="categorias.php" class="btn-outline <?= $pagina_actual === 'categorias'  ? 'activo' : '' ?>">Categorías</a>
-                <a href="banners.php"    class="btn-outline <?= $pagina_actual === 'portada'     ? 'activo' : '' ?>">Portada</a>
-                <a href="tarifas.php"    class="btn-outline <?= $pagina_actual === 'tarifas'     ? 'activo' : '' ?>">Tarifas</a>
-                <a href="sitio.php"      class="btn-outline <?= $pagina_actual === 'sitio'       ? 'activo' : '' ?>">Datos del sitio</a>
-                <a href="index.php"      class="btn-outline" target="_blank" rel="noopener">Ver sitio ↗</a>
-                <a href="panel_clave.php" class="btn-outline <?= $pagina_actual === 'clave' ? 'activo' : '' ?>" title="Cambiar contraseña">Contraseña</a>
+            <?php if (!$obligatorio_clave):
+                $enlace = fn(string $url, string $clave, string $texto, string $extra = '') =>
+                    '<a href="' . $url . '" class="btn-outline ' . ($pagina_actual === $clave ? 'activo' : '') . '"' . $extra . '>' . $texto . '</a>';
+                $config_activa = in_array($pagina_actual, ['productos', 'categorias', 'arreglos', 'portada', 'tarifas', 'sitio', 'clave'], true); ?>
+                <?= $enlace('modista.php', 'solicitudes', 'Solicitudes') ?>
+                <?= $enlace('taller.php', 'taller', 'Taller') ?>
+                <?= $enlace('pedidos.php', 'pedidos', 'Pedidos' . ($pendientes_panel ? ' <span class="globo-panel">' . $pendientes_panel . '</span>' : '')) ?>
+                <?= $enlace('clientes.php', 'clientes', 'Clientas') ?>
+                <?= $enlace('pagos.php', 'senas', 'Señas') ?>
+                <?= $enlace('gastos.php', 'gastos', 'Gastos') ?>
+                <details class="nav-mas">
+                    <summary class="btn-outline <?= $config_activa ? 'activo' : '' ?>">Sitio y catálogo ▾</summary>
+                    <div class="nav-mas-panel">
+                        <?= $enlace('productos.php', 'productos', 'Catálogo') ?>
+                        <?= $enlace('lista_arreglos.php', 'arreglos', 'Precios de arreglos') ?>
+                        <?= $enlace('categorias.php', 'categorias', 'Categorías') ?>
+                        <?= $enlace('banners.php', 'portada', 'Portada') ?>
+                        <?= $enlace('tarifas.php', 'tarifas', 'Tarifas por plazo') ?>
+                        <?= $enlace('sitio.php', 'sitio', 'Datos del sitio') ?>
+                        <?= $enlace('panel_clave.php', 'clave', 'Cambiar contraseña') ?>
+                    </div>
+                </details>
+                <a href="index.php" class="btn-outline" target="_blank" rel="noopener">Ver sitio ↗</a>
             <?php endif; ?>
             <form method="post" action="panel_logout.php" class="form-salir">
                 <input type="hidden" name="token" value="<?= e(token_modista()) ?>">

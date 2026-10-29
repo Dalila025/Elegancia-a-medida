@@ -116,7 +116,7 @@ const NOTIFICACIONES = [
     ESTADO_PRESUPUESTADO => ['Tu presupuesto está listo',
                              'Trabajo: {prenda}. Total: {total}. Entrega estimada: {entrega}. {observaciones}'],
     ESTADO_EN_PROCESO    => ['¡Empezamos tu trabajo!',
-                             'Confirmamos tu pedido ({prenda}). Entrega estimada: {entrega}.'],
+                             'Confirmamos tu pedido ({prenda}). Entrega estimada: {entrega}. Entrá a tu solicitud y elegí qué día acercarte al taller; ahí también podés dejar la seña si querés.'],
     ESTADO_COMPLETADO    => ['Tu pedido está listo',
                              'Tu pedido ({prenda}) ya está terminado. Podés coordinar el retiro con nosotros.'],
     ESTADO_CANCELADO     => ['Tu solicitud fue cancelada',
@@ -167,6 +167,7 @@ const TIPO_NOMBRE_MAX       = 60;     // tipos_producto.nombre varchar(60)
 // Cuántos productos se muestran en cada sección del inicio
 const INICIO_MAX_OFERTAS    = 8;
 const INICIO_MAX_TEMPORADA  = 8;
+const INICIO_MAX_NUEVOS     = 8;     // «Disfraces nuevos» del inicio (últimos cargados para alquilar)
 
 // =====================================================
 // DATOS DEL SITIO (tabla datos_sitio: historia y contacto)
@@ -214,7 +215,7 @@ const TRANSICIONES_PEDIDO = [
 
 // Aviso para el cliente según el estado del pedido. Marcador: {codigo}
 const NOTIFICACIONES_PEDIDO = [
-    PEDIDO_CONFIRMADO => ['Confirmamos tu pedido', 'Tu pedido {codigo} fue confirmado. Te vamos a contactar para coordinar el pago y el retiro.'],
+    PEDIDO_CONFIRMADO => ['Confirmamos tu pedido', 'Tu pedido {codigo} fue confirmado. Para reservarlo, pagá la seña de {sena} desde «Mis pedidos».'],
     PEDIDO_LISTO      => ['Tu pedido está listo', 'Ya podés retirar tu pedido {codigo}.'],
     PEDIDO_ENTREGADO  => ['Pedido entregado', 'Registramos la entrega de tu pedido {codigo}. ¡Gracias!'],
     PEDIDO_DEVUELTO   => ['Recibimos la devolución', 'Registramos la devolución de las prendas del pedido {codigo}. ¡Gracias!'],
@@ -231,3 +232,158 @@ const CARPETA_BANNERS      = 'img/banners/';
 const BANNER_TITULO_MAX    = 60;
 const BANNER_SUBTITULO_MAX = 160;
 const BANNER_BOTON_MAX     = 30;
+
+
+// =====================================================
+// GUÍA DE TALLES Y MEDIDAS (tablas talles_producto y medidas_clientes)
+// =====================================================
+//
+// La modista carga, para cada prenda, sus talles con las medidas del cuerpo
+// (en cm). La clienta carga sus medidas y el sitio le recomienda el talle.
+
+// Medidas de la guía de talles: columna => [nombre, cómo se mide]
+const MEDIDAS_TALLE = [
+    'busto'    => ['Busto',    'Rodeá la parte más llena del busto, sin apretar la cinta.'],
+    'cintura'  => ['Cintura',  'La parte más angosta de la cintura, arriba del ombligo.'],
+    'cadera'   => ['Cadera',   'La parte más ancha de la cadera, con los pies juntos.'],
+    'hombros'  => ['Hombros',  'De la punta de un hombro a la otra, por la espalda.'],
+    'estatura' => ['Estatura', 'Descalza, de la cabeza a los pies.'],
+    'largo'    => ['Largo de la prenda', 'Del hombro hasta el ruedo de la prenda.'],
+];
+
+// Medidas de la ficha de la clienta: columna => [nombre, cómo se mide]
+const MEDIDAS_CLIENTE = [
+    'busto'       => MEDIDAS_TALLE['busto'],
+    'cintura'     => MEDIDAS_TALLE['cintura'],
+    'cadera'      => MEDIDAS_TALLE['cadera'],
+    'hombros'     => MEDIDAS_TALLE['hombros'],
+    'estatura'    => MEDIDAS_TALLE['estatura'],
+    'largo_brazo' => ['Largo de brazo', 'Desde la punta del hombro hasta la muñeca, con el brazo relajado.'],
+];
+
+// Medidas que se comparan para recomendar el talle (están en las dos tablas)
+const MEDIDAS_COMPARABLES = ['busto', 'cintura', 'cadera', 'hombros', 'estatura'];
+
+const MEDIDA_MIN_CM       = 20;    // valores razonables, en centímetros
+const MEDIDA_MAX_CM       = 250;
+const TALLES_MAX          = 8;     // talles por prenda
+const TALLE_NOMBRE_MAX    = 10;    // talles_producto.talle varchar(10)
+const TALLE_A_MEDIDA      = 'A medida';
+const TALLE_HOLGURA_CM    = 3;     // si la clienta mide más que el talle por más de esto, le puede quedar justo
+const TALLE_SOBRA_CM      = 6;     // si mide menos por más de esto, le puede quedar grande
+const TALLE_ESTATURA_CM   = 5;     // diferencia de estatura que avisa "corto" o "largo"
+const MEDIDAS_NOTAS_MAX   = 255;
+
+// =====================================================
+// SEÑA Y MERCADO PAGO (tabla pagos)
+// =====================================================
+//
+// Cuándo se cobra la seña:
+//   - Pedido del carrito: cuando la modista lo confirma (Confirmado o Listo para retirar).
+//   - Presupuesto de confección/arreglo: cuando el cliente lo acepta (En proceso).
+// La modista también puede registrar una seña cobrada en efectivo o transferencia.
+
+const SENA_PORCENTAJE = 50;   // % del total que se paga como seña
+
+// Estados en los que el cliente ve el botón «Pagar seña»
+const PEDIDO_ESTADOS_CON_SENA    = [PEDIDO_CONFIRMADO, PEDIDO_LISTO];
+const SOLICITUD_ESTADOS_CON_SENA = [ESTADO_EN_PROCESO];
+
+const PAGO_METODOS = [
+    'mercadopago'   => 'Mercado Pago',
+    'simulado'      => 'Pago simulado',
+    'efectivo'      => 'Efectivo',
+    'transferencia' => 'Transferencia',
+];
+const PAGO_OBSERVACIONES_MAX = 255;
+
+// Credenciales de Mercado Pago: van en mercadopago_config.php, que NO se sube
+// a GitHub (está en .gitignore). Si el archivo no existe, se usa el modo simulado.
+if (is_file(__DIR__ . '/mercadopago_config.php')) {
+    require_once __DIR__ . '/mercadopago_config.php';
+}
+// Valores por defecto de lo que no se haya definido en mercadopago_config.php
+defined('MP_MODO')         || define('MP_MODO', 'simulado');   // 'simulado' o 'mercadopago'
+defined('MP_ACCESS_TOKEN') || define('MP_ACCESS_TOKEN', '');
+defined('MP_USAR_SANDBOX') || define('MP_USAR_SANDBOX', false);  // true solo con tokens viejos TEST-
+defined('MP_API_URL')      || define('MP_API_URL', 'https://api.mercadopago.com');
+defined('SITIO_URL')       || define('SITIO_URL', '');          // vacío = se detecta solo
+defined('MP_CA_BUNDLE')    || define('MP_CA_BUNDLE', '');       // vacío = se detecta solo
+
+
+// =====================================================
+// GASTOS DE LA MODISTA (tablas gastos y categorias_gasto)
+// =====================================================
+
+const GASTO_DESCRIPCION_MAX = 150;
+const GASTO_CANTIDAD_MAX    = 30;
+const GASTO_PROVEEDOR_MAX   = 100;
+const GASTO_CATEGORIA_MAX   = 60;
+const GASTO_MEDIOS = [
+    'efectivo'      => 'Efectivo',
+    'transferencia' => 'Transferencia',
+    'tarjeta'       => 'Tarjeta',
+    'mercadopago'   => 'Mercado Pago',
+    'otro'          => 'Otro',
+];
+
+
+// =====================================================
+// LISTA DE PRECIOS DE ARREGLOS (tabla arreglos)
+// =====================================================
+
+const ARREGLO_NOMBRE_MAX      = 80;
+const ARREGLO_DESCRIPCION_MAX = 200;
+const ARREGLO_DEMORA_MAX      = 60;     // días
+const SERVICIO_ARREGLOS       = 2;      // id de «Arreglos» en tipos_servicio
+
+
+// =====================================================
+// TALLER: ETAPAS Y TURNOS DE PRUEBA (etapas_taller, avances_taller, turnos_prueba)
+// =====================================================
+
+// Etapas (DEBEN coincidir con la tabla etapas_taller)
+const ETAPA_RECIBIDO     = 1;
+const ETAPA_CORTE        = 2;
+const ETAPA_PRIMERA      = 3;
+const ETAPA_CONFECCION   = 4;
+const ETAPA_PRUEBA_FINAL = 5;   // «Lista para retirar»: la clienta elige cuándo probársela y llevársela
+const ETAPA_TERMINADO    = 6;   // al llegar acá la solicitud pasa a «Completado»
+
+// Recorrido habitual (botón «Siguiente»). Un arreglo no tiene corte ni primera prueba.
+const ETAPAS_RECORRIDO_ARREGLO = [ETAPA_RECIBIDO, ETAPA_CONFECCION, ETAPA_PRUEBA_FINAL];
+const ETAPAS_RECORRIDO         = [ETAPA_RECIBIDO, ETAPA_CORTE, ETAPA_PRIMERA, ETAPA_CONFECCION, ETAPA_PRUEBA_FINAL];
+
+const TALLER_NOTA_MAX       = 255;
+const TALLER_AVISO_DIAS     = 3;     // entrega en menos de estos días → se marca en rojo
+const TURNO_HORA_MIN        = '08:00';
+const TURNO_HORA_MAX        = '21:00';
+const TURNO_ANTICIPO_DIAS   = 120;   // un turno se puede dar hasta 4 meses adelante
+
+// Para qué es cada turno (columna turnos_prueba.motivo).
+// {cuando} = «jueves 05/11 a las 17:00», {prenda} = tipo de prenda.
+const TURNO_MOTIVOS = [
+    'traer'   => ['nombre'  => 'Traer la prenda',
+                  'cliente' => 'Traé tu prenda',
+                  'aviso'   => 'Acordamos cuándo traés tu prenda',
+                  'texto'   => 'Te esperamos el {cuando} para que traigas tu {prenda}. Ese día te la probás para marcar el arreglo.'],
+    'prueba'  => ['nombre'  => 'Prueba',
+                  'cliente' => 'Tu turno de prueba',
+                  'aviso'   => 'Tenés un turno de prueba',
+                  'texto'   => 'Te esperamos el {cuando} para probarte tu {prenda}.'],
+    'retirar' => ['nombre'  => 'Retirar el trabajo',
+                  'cliente' => 'Retirá tu trabajo',
+                  'aviso'   => 'Tu turno para retirar',
+                  'texto'   => 'Te esperamos el {cuando} para retirar tu {prenda}: te la probás y, si te queda bien, te la llevás.'],
+];
+const TURNO_TEXTO_MEDIDAS = 'Aprovechamos para tomarte las medidas.';
+
+// Horarios en que la modista recibe prendas (horarios_recepcion, dias_sin_atencion).
+// Cuando la clienta acepta el presupuesto, elige uno para acercarse al taller.
+const DIAS_SEMANA          = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 0 => 'Domingo'];
+const HORARIO_PASO_MIN     = 30;   // la grilla de horarios va de media hora en media hora
+const RESERVA_DIAS         = 14;   // la clienta ve los horarios libres de las próximas 2 semanas
+const RESERVA_ANTICIPO_MIN = 120;  // no puede elegir un horario que empieza en menos de 2 horas
+const DIA_SIN_ATENCION_MOTIVO_MAX = 100;
+const RECORDATORIO_DIAS     = 2;    // arriba en el sitio: «No te olvides…» de los turnos de hoy a 2 días
+

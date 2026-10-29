@@ -41,7 +41,17 @@ Así, cuando en una tabla ves `id_clientes`, sabés que apunta a la tabla `clien
 | 16 | `datos_sitio` | `id_datos_sitio` (siempre 1) | — |
 | 17 | `banners` | `id_banners` | — |
 | 18 | `mensajes_contacto` | `id_mensajes_contacto` | — |
-| 19 | `pagos` | `id_pagos` | `id_presupuestos` → presupuestos |
+| 19 | `pagos` | `id_pagos` | `id_pedidos` → pedidos · `id_presupuestos` → presupuestos (uno de los dos) |
+| 20 | `talles_producto` | `id_talles_producto` | `id_productos` → productos |
+| 21 | `medidas_clientes` | `id_medidas_clientes` | `id_clientes` → clientes |
+| 22 | `categorias_gasto` | `id_categorias_gasto` | — |
+| 23 | `gastos` | `id_gastos` | `id_categorias_gasto` → categorias_gasto · `id_solicitudes_presupuesto` → solicitudes_presupuesto (opcional) |
+| 24 | `arreglos` | `id_arreglos` | — |
+| 25 | `etapas_taller` | `id_etapas_taller` | — |
+| 26 | `avances_taller` | `id_avances_taller` | `id_solicitudes_presupuesto` → solicitudes_presupuesto · `id_etapas_taller` → etapas_taller |
+| 27 | `turnos_prueba` | `id_turnos_prueba` | `id_solicitudes_presupuesto` → solicitudes_presupuesto |
+| 28 | `horarios_recepcion` | `id_horarios_recepcion` | — |
+| 29 | `dias_sin_atencion` | `fecha` | — |
 
 ## Diagrama
 
@@ -63,7 +73,14 @@ erDiagram
     productos         |o--o{ items_pedido : "id_productos"
     solicitudes_presupuesto |o--o{ notificaciones : "id_solicitudes_presupuesto"
     pedidos           |o--o{ notificaciones : "id_pedidos"
-    presupuestos      ||--o{ pagos : "id_presupuestos (futuro)"
+    pedidos           |o--o{ pagos : "id_pedidos"
+    presupuestos      |o--o{ pagos : "id_presupuestos"
+    productos         ||--o{ talles_producto : "id_productos"
+    clientes          ||--o{ medidas_clientes : "id_clientes"
+    categorias_gasto  ||--o{ gastos : "id_categorias_gasto"
+    solicitudes_presupuesto ||--o{ avances_taller : "id_solicitudes_presupuesto"
+    etapas_taller     ||--o{ avances_taller : "id_etapas_taller"
+    solicitudes_presupuesto ||--o{ turnos_prueba : "id_solicitudes_presupuesto"
 ```
 
 `usuarios`, `datos_sitio`, `banners` y `mensajes_contacto` no se relacionan con otras tablas.
@@ -245,6 +262,8 @@ Las prendas de cada pedido. Nombre y precio se **copian** al confirmar: si despu
 | id_productos | INT UNSIGNED NULL → `productos` | NULL si se borró el producto |
 | nombre_producto | VARCHAR(100) | copia |
 | modalidad | ENUM('venta','alquiler') | |
+| talle | VARCHAR(12) | talle elegido, «A medida» o vacío (prenda sin guía de talles) |
+| medidas | VARCHAR(255) | si es «A medida», copia de las medidas de la clienta al confirmar |
 | cantidad | TINYINT UNSIGNED | 1 a 10 |
 | precio_unitario | DECIMAL(10,2) NULL | con el descuento aplicado; NULL = a consultar |
 | descuento_porcentaje | TINYINT UNSIGNED | el que tenía al confirmar |
@@ -258,10 +277,11 @@ El carrito de cada cliente (se guarda en la base, así no se pierde al cerrar el
 | id_clientes | INT UNSIGNED → `clientes` | |
 | id_productos | INT UNSIGNED → `productos` | |
 | modalidad | ENUM('venta','alquiler') | |
+| talle | VARCHAR(12) | talle elegido, «A medida» (solo venta) o vacío |
 | cantidad | TINYINT UNSIGNED | 1 a 10 (`CARRITO_CANT_MAX`) |
 | fecha_agregado | DATETIME | para el aviso «Deshacer» de 5 minutos (`CARRITO_DESHACER_MIN`) |
 
-Único por cliente + producto + modalidad: agregar dos veces lo mismo suma la cantidad.
+Único por cliente + producto + modalidad + talle: agregar dos veces lo mismo suma la cantidad; otro talle es otra fila.
 **Usada en:** `carrito_accion.php`, `carrito.php`, `confirmar_pedido.php`, `encabezado_cliente.php` (número del ícono).
 
 ### 15. `notificaciones`
@@ -306,12 +326,164 @@ Las pantallas grandes del inicio (carrusel: Bienvenidos, Venta, Alquiler, Acceso
 
 **Usada en:** `index.php`, `banners.php`, `banner.php`, `guardar_banner.php`.
 
-## Tablas de evolución posterior (vacías)
+### 19. `pagos`
+Las **señas** (por defecto el 50 %, `SENA_PORCENTAJE`). Cada fila es de **un pedido** (`id_pedidos`) **o** de **un presupuesto** (`id_presupuestos`); la otra columna queda NULL (lo controla PHP, igual que en `notificaciones`).
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_pagos | INT UNSIGNED PK | |
+| id_pedidos | INT UNSIGNED NULL → `pedidos` | seña de un pedido del carrito |
+| id_presupuestos | INT UNSIGNED NULL → `presupuestos` | seña de un presupuesto aceptado |
+| concepto | ENUM('sena','saldo','total') | `sena` = la seña; `saldo` = lo que paga después (se registra en la cuenta corriente) |
+| monto | DECIMAL(10,2) | > 0 |
+| metodo | ENUM('mercadopago','simulado','efectivo','transferencia') | efectivo y transferencia los registra la modista |
+| estado | ENUM('pendiente','aprobado','rechazado','devuelto') | solo los **aprobados** cuentan como pagados; **devuelto** = la modista le devolvió la plata (pedido rechazado o cancelado) |
+| referencia | CHAR(24) único | `external_reference` que viaja a Mercado Pago (ej. `EAM-3f9a…`) |
+| mp_preference_id | VARCHAR(100) NULL | id de la preferencia de Checkout Pro |
+| mp_payment_id | VARCHAR(40) NULL único | número de operación de Mercado Pago (un pago no sirve para dos señas) |
+| mp_estado_detalle | VARCHAR(60) | `status_detail` de Mercado Pago (ej. `accredited`) |
+| observaciones | VARCHAR(255) | nota de la modista en los cobros manuales |
+| fecha_creacion, fecha_pago, fecha_devolucion | TIMESTAMP, DATETIME NULL | cuándo se creó, cuándo quedó aprobado y cuándo se devolvió |
+
+Lo que falta de la seña se calcula así: `seña = total × SENA_PORCENTAJE / 100` menos la suma de los pagos aprobados (`estado_sena()` en `funciones_pagos.php`). El total es `pedidos.total_estimado` o `presupuestos.monto_total`.
+**Usada en:** `funciones_pagos.php`, `pagar_sena.php`, `pago_resultado.php`, `verificar_pago.php`, `pago_webhook.php`, `pago_simulado.php`, `pagos.php`, `registrar_pago.php`, `mis_pedidos.php`, `seguimiento.php`, `pedidos.php`, `modista.php`.
+
+### 20. `talles_producto`
+La **guía de talles** de cada prenda: cada talle (S, M, L o 38, 40…) con las **medidas del cuerpo** que le quedan bien, en centímetros. Así la clienta elige por medidas y no por edad. La carga la modista en Panel → Catálogo → editar prenda.
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_talles_producto | INT UNSIGNED PK | |
+| id_productos | INT UNSIGNED → `productos` | se borra con la prenda |
+| talle | VARCHAR(10) | único por prenda; «A medida» está reservado |
+| orden | TINYINT UNSIGNED | orden en la tabla |
+| busto, cintura, cadera, hombros, estatura | DECIMAL(5,1) NULL | medidas del cuerpo en cm; NULL = no se usa |
+| largo | DECIMAL(5,1) NULL | largo de la prenda en cm |
+
+**Usada en:** `producto.php`, `guardar_producto.php`, `prenda.php`, `carrito_accion.php`, `tarjeta_producto.php`.
+
+### 21. `medidas_clientes`
+La **ficha de medidas** de cada clienta. Cada vez que se guardan se agrega una fila nueva (queda el historial); la vigente es la más reciente. La carga la clienta («Mis medidas») o la modista en el taller (Panel → Clientas).
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_medidas_clientes | INT UNSIGNED PK | |
+| id_clientes | INT UNSIGNED → `clientes` | |
+| busto, cintura, cadera, hombros, estatura, largo_brazo | DECIMAL(5,1) NULL | en cm |
+| notas | VARCHAR(255) | ej. «hombro derecho más bajo» |
+| cargada_por | ENUM('cliente','modista') | quién las cargó |
+| fecha_carga | TIMESTAMP | |
+
+**Talle recomendado:** `recomendar_talle()` (`funciones_medidas.php`) compara busto, cintura, cadera, hombros y estatura de la clienta con cada talle y elige el más cercano. Avisa si le puede quedar justo (mide más de 3 cm que el talle), holgado (más de 6 cm menos) o si el largo le queda corto/largo (más de 5 cm de estatura); si la diferencia es grande, le sugiere pedirla «A medida».
+**Usada en:** `mis_medidas.php`, `cliente.php`, `clientes.php`, `prenda.php`, `carrito_accion.php`, `confirmar_pedido.php`.
+
+### 22. `categorias_gasto`
+Rubros para ordenar los gastos (Telas, Mercería y avíos, Servicios, Alquiler del taller, Máquinas y herramientas, Transporte y envíos, Otros). La modista agrega, oculta o elimina rubros en Panel → Gastos; un rubro con gastos no se puede eliminar (`ON DELETE RESTRICT`).
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_categorias_gasto | SMALLINT UNSIGNED PK | |
+| nombre | VARCHAR(60) único | |
+| descripcion | VARCHAR(150) | |
+| activo | TINYINT(1) | 0 = no aparece al cargar un gasto |
+
+### 23. `gastos`
+Lo que gasta la modista: tela, elástico, hilos, cierres, luz, alquiler del taller… Panel → **Gastos** (`gastos.php`), con resumen del mes, por rubro y descarga para Excel (`gastos_csv.php`).
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_gastos | INT UNSIGNED PK | |
+| id_categorias_gasto | SMALLINT UNSIGNED → `categorias_gasto` | rubro |
+| id_solicitudes_presupuesto | INT UNSIGNED NULL → `solicitudes_presupuesto` | trabajo para el que se compró (tela de un vestido…). NULL = gasto general (luz, alquiler). Si se borra el trabajo, queda en NULL |
+| fecha | DATE | no puede ser posterior a hoy |
+| descripcion | VARCHAR(150) | qué compró o pagó |
+| cantidad | VARCHAR(30) | opcional, texto libre: «3 m», «2 rollos» |
+| monto | DECIMAL(10,2) | > 0 |
+| medio_pago | ENUM('efectivo','transferencia','tarjeta','mercadopago','otro') | |
+| proveedor | VARCHAR(100) | opcional: dónde lo compró |
+| fecha_carga | TIMESTAMP | |
+
+**Usada en:** `gastos.php`, `guardar_gasto.php`, `gastos_csv.php`.
+
+### 24. `arreglos`
+La **lista de precios de arreglos**. La modista la arma en Panel → Sitio y catálogo → Precios de arreglos (`lista_arreglos.php`); se publica en `precios_arreglos.php` y le aparece como referencia al presupuestar un arreglo.
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_arreglos | SMALLINT UNSIGNED PK | |
+| nombre | VARCHAR(80) único | ej. «Dobladillo de pantalón» |
+| descripcion | VARCHAR(200) | |
+| precio | DECIMAL(10,2) NULL | NULL = a consultar |
+| precio_desde | TINYINT(1) | 1 = se muestra «desde $…» |
+| demora_dias | TINYINT UNSIGNED NULL | días aproximados |
+| activo | TINYINT(1) | 0 = no se ve en el sitio |
+
+### 25. `etapas_taller`
+Etapas por las que pasa un trabajo: 1 Recibido · 2 Corte · 3 Primera prueba · 4 Confección · 5 Lista para retirar · 6 Terminado. **Los id tienen que coincidir con las constantes `ETAPA_*` de `config.php`.** `texto_cliente` es lo que lee la clienta cuando su trabajo llega a esa etapa.
+
+### 26. `avances_taller`
+Historial de etapas de cada trabajo (solicitudes **En proceso**). La etapa actual es el avance más reciente. Se puede saltear etapas (un arreglo no tiene «Corte»). Al pasar a **Terminado**, la solicitud queda **Completado** y se le avisa a la clienta.
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_avances_taller | INT UNSIGNED PK | |
+| id_solicitudes_presupuesto | INT UNSIGNED → `solicitudes_presupuesto` | |
+| id_etapas_taller | TINYINT UNSIGNED → `etapas_taller` | |
+| nota | VARCHAR(255) | la ve la clienta |
+| fecha | TIMESTAMP | |
+
+### 27. `turnos_prueba`
+Turnos del taller: traer la prenda, pruebas y retirar. Los da la modista o los elige la clienta (de los horarios de recepción). La modista no puede darlos en el pasado, a más de 120 días, fuera de 8 a 21 h, ni dos a la misma hora.
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_turnos_prueba | INT UNSIGNED PK | |
+| id_solicitudes_presupuesto | INT UNSIGNED → `solicitudes_presupuesto` | |
+| fecha_hora | DATETIME | |
+| motivo | ENUM('prueba','traer','retirar') | para qué es: probarse, traer la prenda (arreglos; ese día se la prueba) o retirar (se lo prueba y, si queda bien, se lo lleva) |
+| tomar_medidas | TINYINT(1) | 1 = se aprovecha el turno para tomarle las medidas |
+| origen | ENUM('modista','clienta') | quién eligió el horario (la clienta lo elige desde su solicitud) |
+| nota | VARCHAR(255) | ej. «traé los zapatos de la fiesta» |
+| estado | ENUM('programado','realizado','cancelado') | |
+| resultado | VARCHAR(20) | turno para retirar: `retiro` (se lo llevó) o `retoque` (hubo que ajustar) |
+
+**Usadas en:** `funciones_taller.php`, `taller.php`, `guardar_taller.php`, `seguimiento.php`, `modista.php`, `reservar_turno.php`.
+
+### 28. `horarios_recepcion`
+Horarios fijos de la semana en que la modista recibe prendas (Taller → Horarios). Cuando la clienta acepta un presupuesto, elige uno libre de las próximas 2 semanas.
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_horarios_recepcion | SMALLINT UNSIGNED PK | |
+| dia_semana | TINYINT UNSIGNED | 0 = domingo … 6 = sábado. Único junto con `hora` |
+| hora | TIME | de media hora en media hora, entre las 8 y las 21 |
+
+### 29. `dias_sin_atencion`
+Días puntuales en que la modista no atiende (feriado, viaje). Esos días no se ofrecen horarios.
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| fecha | DATE PK | |
+| motivo | VARCHAR(100) | solo lo ve la modista |
+
+**Usadas en:** `funciones_taller.php`, `horarios.php`, `guardar_horarios.php`, `reservar_turno.php`, `seguimiento.php`.
+
+## Cuenta corriente (sin tabla propia)
+La cuenta corriente de cada clienta **no tiene tabla**: se calcula con lo que ya está guardado (`funciones_cuenta.php`), así no hay datos repetidos que se puedan contradecir.
+
+| | Sale de |
+|---|---|
+| **Debe** (lo que tiene que pagar) | `pedidos.total_estimado` de los pedidos Confirmados, Listos, Entregados o Devueltos + `presupuestos.monto_total` de las solicitudes En proceso o Completadas |
+| **Haber** (lo que pagó) | `pagos` con estado `aprobado` (señas y saldos) |
+| **Saldo** | debe − haber. Negativo = saldo a favor de la clienta |
+
+La modista registra los pagos en efectivo o transferencia desde la ficha de la clienta (`cliente.php` → `registrar_cobro.php`): si falta parte de la seña se guarda como `sena` y el resto como `saldo`. La clienta ve lo mismo en **Estado de cuenta** (`mi_cuenta.php`).
+
+## Tabla de evolución posterior (vacía)
 
 | # | Tabla | Para |
 |---|---|---|
 | 18 | `mensajes_contacto` | formulario de contacto |
-| 19 | `pagos` | señas y saldos de un presupuesto (`id_presupuestos`) |
 
 ## Dónde tocar cuando se modifica algo
 
@@ -326,6 +498,14 @@ Las pantallas grandes del inicio (carrusel: Bienvenidos, Venta, Alquiler, Acceso
 | Logo, historia o datos de contacto | Panel → **Datos del sitio** |
 | Pantallas del carrusel o recuadros del mosaico | Panel → **Portada** |
 | Minutos para deshacer en el carrito | `CARRITO_DESHACER_MIN` en `config.php` |
+| Porcentaje de la seña | `SENA_PORCENTAJE` en `config.php` |
+| Una etapa del taller | `etapas_taller` **y** las constantes `ETAPA_*` en `config.php` |
+| Horario de los turnos | `TURNO_HORA_MIN` / `TURNO_HORA_MAX` en `config.php` |
+| Precios de los arreglos | Panel → Sitio y catálogo → **Precios de arreglos** |
+| Qué medidas tiene la guía de talles o la ficha de la clienta | `MEDIDAS_TALLE` / `MEDIDAS_CLIENTE` en `config.php` **y** las columnas de `talles_producto` / `medidas_clientes` |
+| Qué tan estricta es la recomendación de talle | `TALLE_HOLGURA_CM`, `TALLE_SOBRA_CM`, `TALLE_ESTATURA_CM` en `config.php` |
+| En qué estados se paga la seña | `PEDIDO_ESTADOS_CON_SENA` / `SOLICITUD_ESTADOS_CON_SENA` en `config.php` |
+| Credenciales de Mercado Pago / modo simulado | `mercadopago_config.php` (copiar de `mercadopago_config.example.php`; no se sube a GitHub) |
 | Cuántos productos muestra Ofertas / Temporada | `INICIO_MAX_OFERTAS` / `INICIO_MAX_TEMPORADA` en `config.php` |
 | Peso o formatos de las fotos | `IMAGEN_MAX_BYTES` / `IMAGEN_TIPOS` en `config.php` |
 | Longitud de una columna | El `CREATE TABLE` y la constante `*_MAX` de `config.php` |

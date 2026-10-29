@@ -7,7 +7,8 @@ declare(strict_types=1);
  * producto.php        → producto nuevo
  * producto.php?id=N   → editar el producto N
  * Envía (con la foto) a guardar_producto.php.
- * Incluye: tipo de prenda, venta y/o alquiler, oferta y temporada.
+ * Incluye: tipo de prenda, venta y/o alquiler, oferta, temporada y la
+ * guía de talles (talles_producto: medidas del cuerpo en cm por talle).
  */
 
 require_once __DIR__ . '/config.php';
@@ -63,6 +64,16 @@ $check = fn(string $campo, bool $defecto) => $viejo !== null
     : ($producto ? (int) $producto[$campo] === 1 : $defecto);
 
 $foto = $producto ? url_imagen_producto($producto['imagen']) : null;
+
+// Guía de talles: lo enviado con error, lo guardado, o vacío
+$talles = $viejo['talles'] ?? ($producto ? array_map(
+    fn($t) => array_merge(['talle' => $t['talle']], array_map(
+        fn($c) => $t[$c] === null ? '' : cm((float) $t[$c]),
+        array_combine(array_keys(MEDIDAS_TALLE), array_keys(MEDIDAS_TALLE))
+    )),
+    talles_de_producto($pdo, $id)
+) : []);
+$filas_visibles = max(3, count($talles) + 1);
 $descuento_val = (int) $v('descuento_porcentaje', 0);
 $pagina_actual = 'productos';
 ?>
@@ -73,8 +84,8 @@ $pagina_actual = 'productos';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
     <title><?= $producto ? 'Editar producto' : 'Nuevo producto' ?> · Panel · Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/modista.css">
-    <link rel="stylesheet" href="css/panel.css">
+    <link rel="stylesheet" href="<?= asset('css/modista.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/panel.css') ?>">
 </head>
 <body>
     <?php require __DIR__ . '/encabezado_modista.php'; ?>
@@ -168,7 +179,7 @@ $pagina_actual = 'productos';
                             </div>
                             <label class="check">
                                 <input type="checkbox" name="de_temporada" value="1" <?= $check('de_temporada', false) ? 'checked' : '' ?>>
-                                Producto de temporada (aparece en la sección de temporada del inicio)
+                                Producto de temporada (aparece en el filtro «Temporada» de la tienda y del menú)
                             </label>
                         </fieldset>
 
@@ -195,6 +206,38 @@ $pagina_actual = 'productos';
                     </div>
                 </div>
 
+                <fieldset class="grupo guia-talles">
+                    <legend>Guía de talles (medidas del cuerpo, en cm)</legend>
+                    <p class="ayuda" style="margin-top:0">
+                        Cargá cada talle (S, M, L o 38, 40, 42…) con las medidas del cuerpo que le quedan bien.
+                        Así la clienta elige por sus medidas y no por la edad, y el sitio le recomienda su talle.
+                        Dejá vacías las medidas que no correspondan. Si la prenda no tiene talles (ej: un tocado), dejá todo vacío.
+                    </p>
+                    <div class="tabla-scroll">
+                        <table class="tabla-talles">
+                            <thead>
+                                <tr>
+                                    <th>Talle</th>
+                                    <?php foreach (MEDIDAS_TALLE as $c => [$nom, $ayuda]): ?><th title="<?= e($ayuda) ?>"><?= e($nom) ?></th><?php endforeach; ?>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php for ($i = 0; $i < TALLES_MAX; $i++): $t = $talles[$i] ?? []; ?>
+                                <tr class="<?= $i >= $filas_visibles ? 'fila-talle-oculta' : '' ?>">
+                                    <td><input type="text" name="talles[<?= $i ?>][talle]" maxlength="<?= TALLE_NOMBRE_MAX ?>"
+                                               value="<?= e((string) ($t['talle'] ?? '')) ?>" placeholder="Ej: M" aria-label="Talle <?= $i + 1 ?>"></td>
+                                    <?php foreach (MEDIDAS_TALLE as $c => [$nom]): ?>
+                                        <td><input type="text" inputmode="decimal" name="talles[<?= $i ?>][<?= $c ?>]" maxlength="5"
+                                                   value="<?= e((string) ($t[$c] ?? '')) ?>" aria-label="<?= e($nom) ?> del talle <?= $i + 1 ?>"></td>
+                                    <?php endforeach; ?>
+                                </tr>
+                            <?php endfor; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn-secundario" id="mas-talles" <?= $filas_visibles >= TALLES_MAX ? 'hidden' : '' ?>>+ Agregar otro talle</button>
+                </fieldset>
+
                 <div class="botonera">
                     <button type="submit" class="btn-guardar"><?= $producto ? 'Guardar cambios' : 'Agregar al catálogo' ?></button>
                     <a href="productos.php" class="btn-secundario">Cancelar</a>
@@ -214,6 +257,13 @@ $pagina_actual = 'productos';
             img.src = URL.createObjectURL(f);
             caja.innerHTML = '';
             caja.appendChild(img);
+        });
+
+        // Guía de talles: mostrar una fila más
+        document.getElementById('mas-talles').addEventListener('click', function () {
+            var oculta = document.querySelector('.fila-talle-oculta');
+            if (oculta) { oculta.classList.remove('fila-talle-oculta'); oculta.querySelector('input').focus(); }
+            if (!document.querySelector('.fila-talle-oculta')) { this.hidden = true; }
         });
 
         // El precio solo se puede escribir si la modalidad está marcada.

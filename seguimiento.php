@@ -10,11 +10,13 @@ declare(strict_types=1);
  * (se procesan en responder_presupuesto.php).
  * Al abrirla, los avisos de esta solicitud quedan leídos.
  *
- * Tablas: solicitudes_presupuesto, tipos_servicio, presupuestos, notificaciones.
+ * Con el presupuesto aceptado, aparece el recuadro para pagar la seña
+ * (funciones_pagos.php → pagar_sena.php).
+ *
+ * Tablas: solicitudes_presupuesto, tipos_servicio, presupuestos, notificaciones, pagos.
  */
 
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/funciones.php';
+require_once __DIR__ . '/funciones_pagos.php';
 iniciar_sesion();
 require_once __DIR__ . '/conexion.php';
 
@@ -30,8 +32,8 @@ try {
         // La condición id_clientes impide ver solicitudes de otra persona.
         $stmt = $pdo->prepare(
             'SELECT s.id_solicitudes_presupuesto, s.codigo_seguimiento, s.tipo_prenda, s.descripcion,
-                    s.fecha_requerida, s.fecha_solicitud, s.id_estados_solicitud, t.nombre AS servicio,
-                    p.monto_total, p.fecha_entrega, p.observaciones, p.fecha_creacion, p.fecha_actualizacion,
+                    s.fecha_requerida, s.fecha_solicitud, s.id_estados_solicitud, s.id_tipos_servicio, t.nombre AS servicio,
+                    p.id_presupuestos, p.monto_total, p.fecha_entrega, p.observaciones, p.fecha_creacion, p.fecha_actualizacion,
                     p.fecha_respuesta_cliente, p.comentario_cliente
                FROM solicitudes_presupuesto s
                INNER JOIN tipos_servicio t ON t.id_tipos_servicio = s.id_tipos_servicio
@@ -95,8 +97,8 @@ $pagina_actual = 'mis';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($sol['tipo_prenda']) ?> - Mis solicitudes - Elegancia a Medida</title>
-    <link rel="stylesheet" href="css/cliente.css">
-    <link rel="stylesheet" href="css/sitio.css">
+    <link rel="stylesheet" href="<?= asset('css/cliente.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/sitio.css') ?>">
 </head>
 <body>
 <?php require __DIR__ . '/encabezado_cliente.php'; ?>
@@ -203,7 +205,117 @@ $pagina_actual = 'mis';
                         ✓ Aceptaste este presupuesto el <?= (new DateTime($sol['fecha_respuesta_cliente']))->format('d/m/Y') ?>.
                     </p>
                 <?php endif; ?>
+
+                <?php
+                // Seña del presupuesto aceptado (o comprobante si ya se pagó)
+                if ($sol['id_presupuestos'] !== null) {
+                    $sena = estado_sena($pdo, 'presupuesto', (int) $sol['id_presupuestos'], (float) $sol['monto_total']);
+                    if (in_array($estado, SOLICITUD_ESTADOS_CON_SENA, true) || $sena['cubierta']) {
+                        mostrar_caja_sena('solicitud', $codigo, (float) $sol['monto_total'], $sena, token_cliente(),
+                                          hay_pago_mp_pendiente($pdo, 'presupuesto', (int) $sol['id_presupuestos']));
+                    }
+                }
+                ?>
             </div>
+        <?php endif; ?>
+
+        <?php if (in_array($estado, [ESTADO_EN_PROCESO, ESTADO_COMPLETADO], true)):
+            // Avance en el taller (funciones_taller.php)
+            $etapas_t  = obtener_etapas($pdo);
+            $avances_t = avances_de($pdo, (int) $sol['id_solicitudes_presupuesto']);
+            $turnos_t  = turnos_de($pdo, (int) $sol['id_solicitudes_presupuesto']);
+            $prox      = proximo_turno($turnos_t);
+            $ultimo    = $avances_t ? end($avances_t) : null;
+            $orden_act = $estado === ESTADO_COMPLETADO ? PHP_INT_MAX : ($ultimo ? (int) $ultimo['orden'] : 0);
+            $por_etapa = [];
+            foreach ($avances_t as $av) { $por_etapa[(int) $av['id_etapas_taller']] = $av; } ?>
+            <section class="taller-cliente" aria-label="Tu trabajo en el taller">
+                <h2>Tu trabajo en el taller</h2>
+                <?php
+                $sitio_t = datos_sitio($pdo);
+                $es_arreglo_t = (int) $sol['id_tipos_servicio'] === SERVICIO_ARREGLOS; ?>
+                <?php
+                // ¿Le toca elegir un turno? Al empezar (traer la prenda) y cuando está lista (retirarla)
+                $motivo_elige = $estado === ESTADO_EN_PROCESO ? turno_que_elige($ultimo ? (int) $ultimo['id_etapas_taller'] : 0) : null;
+                $turno_elegible = null;   // el turno que ya tiene para eso (lo puede cambiar)
+                foreach ($turnos_t as $tt) {
+                    if ($motivo_elige && $tt['motivo'] === $motivo_elige && $tt['estado'] === 'programado' && $tt['fecha_hora'] >= date('Y-m-d 00:00:00')) { $turno_elegible = $tt; }
+                }
+                $libres_t = $motivo_elige ? horarios_libres($pdo) : [];
+                $saldo_t  = $motivo_elige === 'retirar' ? saldo_trabajo($pdo, (int) $sol['id_solicitudes_presupuesto']) : 0.0;
+                $wa_modista = fn(?array $turno) => enlace_whatsapp($sitio_t['whatsapp'] ?? '',
+                    wa_clienta_a_modista($cliente['nombre'], $sol['tipo_prenda'], $sol['codigo_seguimiento'], (string) $motivo_elige, $turno));
+                ?>
+                <?php if ($motivo_elige && !$turno_elegible):
+                    $wa_elegir = $wa_modista(null); ?>
+                    <div class="paso-siguiente <?= $motivo_elige === 'retirar' ? 'lista' : '' ?>" id="turno">
+                        <?php if ($motivo_elige === 'retirar'): ?>
+                            <p class="ps-titulo">🎉 ¡Terminamos tu <?= e(prenda_en_frase($sol['tipo_prenda'])) ?>! Elegí cuándo pasar a retirar</p>
+                            <p>Te la probás y, si te queda bien, te la llevás.
+                                <?php if ($saldo_t > 0): ?>Saldo a pagar al retirar: <strong><?= e(pesos($saldo_t)) ?></strong>.<?php endif; ?></p>
+                        <?php else: ?>
+                            <p class="ps-titulo">✓ Aceptaste el presupuesto. Ahora, elegí cuándo acercarte</p>
+                            <p><?= e($es_arreglo_t
+                                ? 'Llevale la prenda a la modista: ese día te la probás para marcar el arreglo y te toma las medidas.'
+                                : 'Pasá por el taller: la modista te toma las medidas y charlan los detalles de tu ' . prenda_en_frase($sol['tipo_prenda']) . '.') ?>
+                                Si querés, ese día también podés dejar la seña.</p>
+                        <?php endif; ?>
+                        <?php if ($libres_t): ?>
+                            <?php mostrar_selector_turno($libres_t, $codigo, '¡Reservar este horario!'); ?>
+                            <?php if ($wa_elegir): ?><p class="ps-wa">¿Ninguno te queda bien? <a href="<?= e($wa_elegir) ?>" target="_blank" rel="noopener">Escribile a la modista por WhatsApp</a></p><?php endif; ?>
+                        <?php else: ?>
+                            <p class="ps-aviso">Por ahora no hay horarios libres para elegir. La modista te va a escribir para acordar el día<?= $wa_elegir ? ', o escribile vos' : '' ?>.</p>
+                            <?php if ($wa_elegir): ?><a href="<?= e($wa_elegir) ?>" target="_blank" rel="noopener" class="btn-pill btn-wa-turno">Acordar por WhatsApp</a><?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+                <?php if ($prox):
+                    $wa_turno = $wa_modista($prox);
+                    // El turno para traer o retirar lo puede cambiar ella misma
+                    $puede_cambiar = $turno_elegible && (int) $turno_elegible['id_turnos_prueba'] === (int) $prox['id_turnos_prueba'] && $libres_t; ?>
+                    <div class="turno-destacado" id="turno">
+                        <span class="turno-icono" aria-hidden="true">📅</span>
+                        <div><strong><?= $prox['motivo'] === 'retirar' ? 'No te olvides de retirar tu ' . e(prenda_en_frase($sol['tipo_prenda'])) . ': ' . e(texto_turno($prox['fecha_hora'])) : e(motivo_turno($prox['motivo'])['cliente']) . ': ' . e(texto_turno($prox['fecha_hora'])) ?></strong>
+                            <?php if ($prox['motivo'] === 'traer'): ?><br><span><?= $es_arreglo_t ? 'Ese día te la probás para marcar el arreglo.' : 'Ese día charlamos los detalles de tu trabajo.' ?></span><?php endif; ?>
+                            <?php if ($prox['motivo'] === 'retirar'): ?><br><span>Te la probás y, si te queda bien, te la llevás.<?= $saldo_t > 0 ? ' Saldo a pagar: ' . e(pesos($saldo_t)) . '.' : '' ?></span><?php endif; ?>
+                            <?php if ((int) $prox['tomar_medidas'] === 1): ?><br><span>📏 <?= e(TURNO_TEXTO_MEDIDAS) ?></span><?php endif; ?>
+                            <?php if ($prox['motivo'] === 'traer' && $motivo_elige === 'traer'): ?><br><span>💳 Si querés, ese día podés dejar la seña (o pagarla antes desde acá con Mercado Pago).</span><?php endif; ?>
+                            <?php if ($prox['nota'] !== ''): ?><br><span><?= e($prox['nota']) ?></span><?php endif; ?>
+                            <?php if ($puede_cambiar): ?>
+                                <details class="cambiar-turno">
+                                    <summary>Cambiar el día u horario</summary>
+                                    <?php mostrar_selector_turno($libres_t, $codigo, 'Cambiar a este horario'); ?>
+                                </details>
+                            <?php endif; ?>
+                            <?php if ($wa_turno): ?><br><a href="<?= e($wa_turno) ?>" target="_blank" rel="noopener" class="turno-wa">💬 <?= $puede_cambiar ? 'Escribile a la modista por WhatsApp' : '¿No podés ese día? Escribile a la modista' ?></a><?php endif; ?></div>
+                    </div>
+                <?php endif; ?>
+                <?php
+                // Terminado sin turno de retiro (la modista lo marcó directamente): coordinar por WhatsApp
+                $ya_retiro = (bool) array_filter($turnos_t, fn($tt) => $tt['resultado'] === 'retiro');
+                if ($estado === ESTADO_COMPLETADO && !$ya_retiro):
+                    $wa_ret = enlace_whatsapp($sitio_t['whatsapp'] ?? '',
+                        wa_clienta_a_modista($cliente['nombre'], $sol['tipo_prenda'], $sol['codigo_seguimiento'], 'retirar', null)); ?>
+                    <p class="taller-espera">Terminamos tu <?= e(prenda_en_frase($sol['tipo_prenda'])) ?>.
+                        <?php if ($wa_ret): ?><a href="<?= e($wa_ret) ?>" target="_blank" rel="noopener" class="btn-pill btn-wa-turno">💬 Coordinar el retiro por WhatsApp</a><?php endif; ?></p>
+                <?php endif; ?>
+                <?php if (!$ultimo && $estado === ESTADO_EN_PROCESO && $prox && $prox['motivo'] !== 'traer'): ?>
+                    <p class="taller-espera">La modista va a empezar tu trabajo pronto. Acá vas a ver cada paso.</p>
+                <?php endif; ?>
+                <ol class="linea-taller">
+                    <?php foreach ($etapas_t as $ide => $et):
+                        $hecha = (int) $et['orden'] <= $orden_act;
+                        $actual = $ultimo && (int) $ultimo['id_etapas_taller'] === $ide && $estado === ESTADO_EN_PROCESO;
+                        $av = $por_etapa[$ide] ?? null; ?>
+                        <li class="<?= $hecha ? 'hecha' : '' ?> <?= $actual ? 'actual' : '' ?>">
+                            <strong><?= e($et['nombre']) ?></strong>
+                            <?php if ($av): ?><span class="lt-fecha"><?= (new DateTime($av['fecha']))->format('d/m') ?></span><?php endif; ?>
+                            <?php if ($actual): ?><span class="lt-texto"><?= e($et['texto_cliente']) ?></span><?php endif; ?>
+                            <?php if ($av && $av['nota'] !== ''): ?><span class="lt-nota">«<?= e($av['nota']) ?>»</span><?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ol>
+            </section>
         <?php endif; ?>
 
         <?php if ($avisos): ?>
@@ -244,7 +356,7 @@ $pagina_actual = 'mis';
         });
     });
 </script>
-<script src="js/notificaciones.js"></script>
-<script src="js/sitio.js"></script>
+<script src="<?= asset('js/notificaciones.js') ?>"></script>
+<script src="<?= asset('js/sitio.js') ?>"></script>
 </body>
 </html>
