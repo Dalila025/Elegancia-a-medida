@@ -1013,3 +1013,6 @@ require_once __DIR__ . '/funciones_arreglos.php';
 
 // Taller: etapas de cada trabajo y turnos de prueba
 require_once __DIR__ . '/funciones_taller.php';
+
+// Tela sugerida y materiales del presupuesto
+require_once __DIR__ . '/funciones_materiales.php';

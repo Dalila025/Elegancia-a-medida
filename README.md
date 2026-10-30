@@ -1,6 +1,6 @@
 # Elegancia a Medida
 
-Sistema web para una **modista**: confección a medida, arreglos, alquiler y venta de ropa de fiesta. La idea central: en la ropa de fiesta **el talle no depende de la edad sino de las medidas del cuerpo**. Cada prenda tiene su guía de talles en centímetros, la clienta carga sus medidas y el sitio le recomienda el talle (o se la hacen a medida). Cualquiera puede ver el inicio y la **tienda**; con una **cuenta de cliente** se pueden **comprar o alquilar** prendas (carrito → pedido) y **pedir presupuestos** de confección o arreglos. La **modista** maneja todo desde su panel.
+Sistema web para una **modista**: confección a medida, arreglos, alquiler y venta de ropa de fiesta. La idea central: en la ropa de fiesta **el talle no depende de la edad sino de las medidas del cuerpo**. Cada prenda tiene su guía de talles en centímetros, la modista le toma las medidas a la clienta en el taller y el sitio le recomienda el talle (o se la hacen a medida). Cualquiera puede ver el inicio y la **tienda**; con una **cuenta de cliente** se pueden **comprar o alquilar** prendas (carrito → pedido) y **pedir presupuestos** de confección o arreglos. La **modista** maneja todo desde su panel.
 
 Proyecto de Prácticas Profesionalizantes II – Grupo 2 · Ciclo 2026
 
@@ -15,7 +15,8 @@ Proyecto de Prácticas Profesionalizantes II – Grupo 2 · Ciclo 2026
 
 ### Guía de talles y medidas (la idea principal)
 - La modista carga, para cada prenda, una **guía de talles**: cada talle (S, M, L o 38, 40…) con busto, cintura, cadera, hombros, estatura y largo en cm.
-- La clienta carga **sus medidas** en «Mis medidas» (o se las toma la modista en el taller).
+- Al presupuestar, la modista **sugiere la tela** y anota los **materiales** con precio aproximado. Al aceptar, la clienta elige si **los trae ella** o si **los compra la modista** (se suman al total).
+- Las **medidas** las toma la modista en el taller: desde «Mis medidas» la clienta pide un turno para medirse y después ve las medidas que le tomaron.
 - En cada prenda el sitio le dice **«Según tus medidas, tu talle es M»** y le avisa si algo le puede quedar justo, holgado, corto o largo.
 - Para agregar al carrito elige el talle (viene marcado el recomendado) o **«A medida»** (solo en venta): sus medidas se copian en el pedido para que la modista confeccione.
 - La modista ve las medidas de cada clienta y su historial en **Panel → Clientas**.
@@ -112,7 +113,7 @@ Pendiente ──(modista presupuesta)──► Presupuestado ──(cliente acep
 | `index.php` | Inicio: carrusel, mosaico, ofertas, temporada, novedades, historia y contacto |
 | `tienda.php` | Todas las prendas con filtros, buscador y orden (en Alquiler, con la cinta en arco arriba) |
 | `cinta_arco.php` | Cinta de fotos en arco con las prendas en alquiler (se mueve con `js/sitio.js`) |
-| `mis_medidas.php` | La clienta carga sus medidas (queda el historial) |
+| `mis_medidas.php` | La clienta pide turno para que le tomen las medidas en el taller y ve las que le tomaron (solo lectura, con historial) |
 | `precios_arreglos.php` | Lista de precios de arreglos (sitio) |
 | `mi_cuenta.php` | Estado de cuenta de la clienta: trabajos, pagos, saldo y movimientos |
 | `prenda.php` | Detalle de una prenda, guía de talles, talle recomendado y elección de talle |
@@ -134,16 +135,17 @@ Pendiente ──(modista presupuesta)──► Presupuestado ──(cliente acep
 | `panel_login.php` / `panel_logout.php` / `panel_clave.php` | Ingreso, salida y cambio de contraseña |
 | `modista.php` → `actualizar_estado.php` | Solicitudes y cambios de estado |
 | `taller.php` → `guardar_taller.php` | Taller: etapas de cada trabajo y turnos |
+| `login.php`, `registro.php`, `panel_login.php` + `acceso_campos.php`, `css/acceso.css` | Tarjetas de acceso (estilo oscuro con los colores del sitio, mostrar contraseña) |
 | `trabajo.php` → `guardar_gasto.php` | Costos de un trabajo: gastos de esa prenda, precio y ganancia |
 | `horarios.php` → `guardar_horarios.php` | Horarios de la semana para recibir prendas y días sin atención |
-| `reservar_turno.php` | La clienta elige su horario para acercarse (desde `seguimiento.php`) |
+| `reservar_turno.php` | La clienta elige su horario para acercarse (desde `seguimiento.php`), o pide un turno solo para que le tomen las medidas (desde `mis_medidas.php`) |
 | `lista_arreglos.php` → `guardar_arreglo.php` | Lista de precios de arreglos (panel) |
 | `clientes.php`, `cliente.php` → `registrar_cobro.php` | Clientas: ficha con medidas, pedidos, solicitudes y cuenta corriente (registrar pagos y devoluciones) |
 | `pedidos.php` → `actualizar_pedido.php` | Pedidos del carrito y cambios de estado |
 | `gastos.php` → `guardar_gasto.php`, `gastos_csv.php` | Gastos de la modista: carga, resumen del mes y por rubro, rubros, descarga para Excel |
 | `pagos.php` → `registrar_pago.php` | Señas por cobrar, pagos recibidos y cobros en efectivo/transferencia |
 | `banners.php`, `banner.php` → `guardar_banner.php` | Portada: carrusel y mosaico del inicio |
-| `presupuesto.php` → `guardar_presupuesto.php` | Armar o corregir un presupuesto |
+| `presupuesto.php` → `guardar_presupuesto.php` | Armar o corregir un presupuesto, con la tela sugerida y los materiales (`funciones_materiales.php`) |
 | `productos.php`, `producto.php` → `guardar_producto.php` | Catálogo: listado, alta/edición con foto, ocultar, eliminar |
 | `categorias.php` → `guardar_categoria.php` | Categorías y tipos de prenda |
 | `sitio.php` → `guardar_sitio.php` | Logo, historia de la modista, título de temporada y datos de contacto |
@@ -197,7 +199,7 @@ No usa librerías externas (ni CDN): el sitio funciona sin internet, solo con XA
 
 1. Sin iniciar sesión, abrir el inicio: pasan las pantallas Bienvenidos / Venta / Alquiler / Accesorios. Abrir **Shop** y **Arreglos** del menú. Probar el buscador (lupa).
 2. Entrar a una prenda y tocar **Comprar**: pide iniciar sesión. Ingresar con `sofia@demo.com`.
-3. Abrir **Vestido largo bordó**: como Sofía no tiene medidas, invita a cargarlas. Cargarlas en **Mis medidas** (por ejemplo busto 88, cintura 70, cadera 94) y volver: dice «tu talle es **M**».
+3. Abrir **Vestido largo bordó**: como Sofía no tiene medidas, invita a pedir turno para medirse. Pedirlo en **Mis medidas**; en el panel, tocar «Ya le tomé las medidas» y cargar por ejemplo busto 88, cintura 70, cadera 94. Volver a la prenda como Sofía: dice «tu talle es **M**».
 4. Agregar una prenda: arriba aparece **Deshacer** con la cuenta regresiva. Tocarlo: el carrito vuelve a como estaba.
 5. Agregar una prenda en **alquiler**, entrar al carrito, elegir fechas y **confirmar**: aparece en Mis pedidos como Pendiente.
 6. En otra ventana (o incógnito), entrar al panel → **Pedidos** → Confirmar con una nota. En la ventana del cliente llega el aviso.

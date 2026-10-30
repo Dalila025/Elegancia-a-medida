@@ -105,10 +105,12 @@ function trabajos_en_taller(PDO $pdo): array
 /** Próximos turnos de todo el taller (agenda), desde hoy. */
 function agenda_turnos(PDO $pdo, int $limite = 12): array
 {
-    $stmt = $pdo->prepare("SELECT tp.*, s.tipo_prenda, s.id_clientes, s.codigo_seguimiento, c.nombre AS cliente, c.telefono
+    // Incluye los turnos solo para tomar medidas (sin trabajo: la clienta sale de tp.id_clientes)
+    $stmt = $pdo->prepare("SELECT tp.*, COALESCE(s.tipo_prenda, '') AS tipo_prenda, c.id_clientes,
+                                  COALESCE(s.codigo_seguimiento, '') AS codigo_seguimiento, c.nombre AS cliente, c.telefono
                              FROM turnos_prueba tp
-                             INNER JOIN solicitudes_presupuesto s ON s.id_solicitudes_presupuesto = tp.id_solicitudes_presupuesto
-                             INNER JOIN clientes c ON c.id_clientes = s.id_clientes
+                             LEFT JOIN solicitudes_presupuesto s ON s.id_solicitudes_presupuesto = tp.id_solicitudes_presupuesto
+                             INNER JOIN clientes c ON c.id_clientes = COALESCE(tp.id_clientes, s.id_clientes)
                             WHERE tp.estado = 'programado' AND tp.fecha_hora >= CURDATE()
                             ORDER BY tp.fecha_hora LIMIT " . $limite);
     $stmt->execute();
@@ -201,7 +203,7 @@ function agendar_turno(PDO $pdo, int $id_sol, string $fecha, string $hora, strin
     if (!$s) {
         return [false, 'Ese trabajo no está en el taller.'];
     }
-    if (!isset(TURNO_MOTIVOS[$motivo])) {
+    if (!in_array($motivo, TURNO_MOTIVOS_TALLER, true)) {
         return [false, 'Elegí para qué es el turno.'];
     }
     $dt = DateTime::createFromFormat('!Y-m-d H:i', $fecha . ' ' . $hora);
@@ -252,9 +254,10 @@ function cerrar_turno(PDO $pdo, int $id_turno, string $accion, string $nota = ''
     if (!in_array($accion, ['realizado', 'cancelado', 'retiro', 'retoque'], true)) {
         return [false, 'Acción inválida.', ''];
     }
-    $stmt = $pdo->prepare('SELECT tp.*, s.id_clientes, s.tipo_prenda FROM turnos_prueba tp
-                             INNER JOIN solicitudes_presupuesto s ON s.id_solicitudes_presupuesto = tp.id_solicitudes_presupuesto
-                            WHERE tp.id_turnos_prueba = :id');
+    $stmt = $pdo->prepare("SELECT tp.*, COALESCE(tp.id_clientes, s.id_clientes) AS id_clientes, COALESCE(s.tipo_prenda, '') AS tipo_prenda
+                             FROM turnos_prueba tp
+                             LEFT JOIN solicitudes_presupuesto s ON s.id_solicitudes_presupuesto = tp.id_solicitudes_presupuesto
+                            WHERE tp.id_turnos_prueba = :id");
     $stmt->execute([':id' => $id_turno]);
     $t = $stmt->fetch();
     if (!$t || $t['estado'] !== 'programado') {
@@ -266,6 +269,17 @@ function cerrar_turno(PDO $pdo, int $id_turno, string $accion, string $nota = ''
     }
     $id_sol = (int) $t['id_solicitudes_presupuesto'];
     $prenda = prenda_en_frase($t['tipo_prenda']);
+    if ($t['motivo'] === 'medidas') {   // turno sin trabajo: solo tomar medidas
+        if ($accion === 'cancelado') {
+            $pdo->prepare("UPDATE turnos_prueba SET estado = 'cancelado' WHERE id_turnos_prueba = :id")->execute([':id' => $id_turno]);
+            return [true, 'Turno cancelado. Avisale a la clienta por WhatsApp.', ''];
+        }
+        if ($accion !== 'realizado') {
+            return [false, 'Acción inválida para este turno.', ''];
+        }
+        $pdo->prepare("UPDATE turnos_prueba SET estado = 'realizado' WHERE id_turnos_prueba = :id")->execute([':id' => $id_turno]);
+        return [true, 'Turno realizado. Cargá las medidas que le tomaste.', 'cliente.php?id=' . (int) $t['id_clientes'] . '#medidas'];
+    }
     $pdo->prepare('UPDATE turnos_prueba SET estado = :e, resultado = :r WHERE id_turnos_prueba = :id')
         ->execute([':e' => $accion === 'cancelado' ? 'cancelado' : 'realizado',
                    ':r' => in_array($accion, ['retiro', 'retoque'], true) ? $accion : '', ':id' => $id_turno]);
@@ -503,7 +517,9 @@ function reservar_turno_cliente(PDO $pdo, string $codigo, int $id_cliente, strin
                       'Te esperamos el ' . $cuando . ($es_arreglo
                           ? ' con tu ' . $prenda . '. Te la probás para marcar el arreglo'
                           : ' en el taller para charlar tu ' . $prenda)
-                      . ' y te tomamos las medidas. Si querés, ese día podés dejar la seña.');
+                      . ' y te tomamos las medidas. Si querés, ese día podés dejar la seña.'
+                      . (($m = materiales_de_solicitud($pdo, $id_sol))['quien'] === 'clienta' && $m['filas']
+                          ? ' Llevá también los materiales: ' . implode(', ', array_map('texto_material', $m['filas'])) . '.' : ''));
     }
     return [true, ($viejo ? 'Cambiaste tu turno: ' : '¡Listo! Te esperamos el ') . $cuando . '.'];
 }
@@ -538,6 +554,9 @@ function wa_modista_a_clienta(string $nombre, string $prenda, string $codigo, ?a
         return $hola . '¡Ya terminé tu ' . $p . '! 🎉 Entrá a tu solicitud en la web y elegí cuándo pasar a probártela y retirar, o decime qué día te queda bien.' . $pagar . $link;
     }
     $cuando = texto_turno($turno['fecha_hora']);
+    if ($turno['motivo'] === 'medidas') {
+        return $hola . 'Te recuerdo que el ' . $cuando . ' te espero en el taller para tomarte las medidas. ¡Gracias!';
+    }
     return $hola . match ($turno['motivo']) {
         'retirar' => 'Te recuerdo que el ' . $cuando . ' te espero para que retires tu ' . $p . '. Te la probás y, si te queda bien, te la llevás.' . $pagar,
         'traer'   => 'Te recuerdo que el ' . $cuando . ' te espero con tu ' . $p . ' para probártela' . ((int) $turno['tomar_medidas'] === 1 ? ' y tomarte las medidas' : '') . '.',
@@ -567,7 +586,7 @@ function recordatorios_cliente(PDO $pdo, int $id_cliente): array
         $cuando = $dia === date('Y-m-d') ? 'hoy a las ' . substr($t['fecha_hora'], 11, 5)
                 : ($dia === date('Y-m-d', strtotime('+1 day')) ? 'mañana a las ' . substr($t['fecha_hora'], 11, 5) : 'el ' . texto_turno($t['fecha_hora']));
         $p = prenda_en_frase($t['tipo_prenda']);
-        $r[] = ['codigo' => $t['codigo_seguimiento'], 'texto' => match ($t['motivo']) {
+        $r[] = ['url' => 'seguimiento.php?codigo=' . rawurlencode($t['codigo_seguimiento']) . '#turno', 'texto' => match ($t['motivo']) {
             'retirar' => "No te olvides de retirar tu $p $cuando.",
             'traer'   => "No te olvides: $cuando traés tu $p al taller.",
             default   => "No te olvides: $cuando tenés la prueba de tu $p.",
@@ -583,8 +602,14 @@ function recordatorios_cliente(PDO $pdo, int $id_cliente): array
                                                AND tp.motivo = 'retirar' AND tp.estado = 'programado' AND tp.fecha_hora >= NOW())");
     $stmt->execute([':c' => $id_cliente, ':ep' => ESTADO_EN_PROCESO, ':lista' => ETAPA_PRUEBA_FINAL]);
     foreach ($stmt as $s) {
-        $r[] = ['codigo' => $s['codigo_seguimiento'],
+        $r[] = ['url' => 'seguimiento.php?codigo=' . rawurlencode($s['codigo_seguimiento']) . '#turno',
                 'texto' => '¡Terminamos tu ' . prenda_en_frase($s['tipo_prenda']) . '! Elegí cuándo pasar a retirar.'];
+    }
+    // Turno para tomarse las medidas
+    $tm = turno_medidas_cliente($pdo, $id_cliente);
+    if ($tm && $tm['fecha_hora'] < date('Y-m-d', strtotime('+' . (RECORDATORIO_DIAS + 1) . ' days'))) {
+        $r[] = ['url' => 'mis_medidas.php#turno-medidas',
+                'texto' => 'No te olvides: ' . str_replace('HOY', 'hoy', cuando_turno($tm['fecha_hora'])) . ' vas al taller a que te tomen las medidas.'];
     }
     return $r;
 }
@@ -619,12 +644,13 @@ function guardar_horarios(PDO $pdo, array $marcados): int
  * Selector de horarios para la clienta (seguimiento.php): cada día con sus
  * horarios libres como botones. Envía a reservar_turno.php.
  */
-function mostrar_selector_turno(array $libres, string $codigo, string $boton): void
+function mostrar_selector_turno(array $libres, string $codigo, string $boton, ?callable $campos_extra = null): void
 {
     ?>
     <form method="post" action="reservar_turno.php" class="selector-turno">
         <input type="hidden" name="token" value="<?= e(token_cliente()) ?>">
-        <input type="hidden" name="codigo" value="<?= e($codigo) ?>">
+        <?php if ($codigo !== ''): ?><input type="hidden" name="codigo" value="<?= e($codigo) ?>"><?php endif; ?>
+        <?php if ($campos_extra) { $campos_extra(); } ?>
         <div class="st-dias">
             <?php foreach ($libres as $d): ?>
                 <fieldset class="st-dia">
@@ -789,7 +815,8 @@ function cuando_turno(string $fecha_hora): string
 /** Lo que la clienta viene a hacer, dicho para la modista. */
 function titulo_turno_modista(string $motivo): string
 {
-    return ['traer' => 'Te trae la prenda', 'retirar' => 'Viene a retirar', 'prueba' => 'Viene a probarse'][$motivo] ?? 'Turno';
+    return ['traer' => 'Te trae la prenda', 'retirar' => 'Viene a retirar', 'prueba' => 'Viene a probarse',
+            'medidas' => 'Viene a que le tomes las medidas'][$motivo] ?? 'Turno';
 }
 
 /**
@@ -803,7 +830,7 @@ function mostrar_turno_modista(PDO $pdo, array $tu, string $token, string $volve
     $es_hoy = substr($tu['fecha_hora'], 0, 10) === date('Y-m-d');
     $nuevo = $tu['origen'] === 'clienta' && strtotime($tu['fecha_creacion']) >= time() - 48 * 3600;
     $saldo = $tu['motivo'] === 'retirar' ? saldo_trabajo($pdo, (int) $tu['id_solicitudes_presupuesto']) : 0.0;
-    $wa = enlace_whatsapp_cliente($tu['telefono'] ?? '', wa_modista_a_clienta($tu['cliente'], $tu['tipo_prenda'], $tu['codigo_seguimiento'], $tu, $saldo));
+    $wa = enlace_whatsapp_cliente($tu['telefono'] ?? '', wa_modista_a_clienta($tu['cliente'], (string) $tu['tipo_prenda'], (string) $tu['codigo_seguimiento'], $tu, $saldo));
     $boton = function (string $accion, string $texto, string $clase) use ($token, $id_turno, $volver): void { ?>
         <form method="post" action="guardar_taller.php">
             <input type="hidden" name="token" value="<?= e($token) ?>">
@@ -820,13 +847,20 @@ function mostrar_turno_modista(PDO $pdo, array $tu, string $token, string $volve
             <?= e(titulo_turno_modista($tu['motivo'])) ?>: <strong><?= e(cuando_turno($tu['fecha_hora'])) ?></strong>
             <?php if ($nuevo): ?><span class="tm-nuevo">🆕 Lo eligió la clienta</span><?php endif; ?>
         </p>
-        <?php if ($con_nombre): ?><p class="tm-quien"><?= e($tu['cliente']) ?> · <?= e($tu['tipo_prenda']) ?></p><?php endif; ?>
-        <?php if ((int) $tu['tomar_medidas'] === 1): ?><p class="tm-nota">📏 Aprovechá para tomarle las medidas</p><?php endif; ?>
+        <?php if ($con_nombre): ?><p class="tm-quien"><?= e($tu['cliente']) ?><?= $tu['tipo_prenda'] !== '' ? ' · ' . e($tu['tipo_prenda']) : '' ?></p><?php endif; ?>
+        <?php if ($tu['motivo'] === 'medidas' && $tu['nota'] !== ''): ?><p class="tm-nota"><?= e($tu['nota']) ?></p><?php endif; ?>
+        <?php if ((int) $tu['tomar_medidas'] === 1 && $tu['motivo'] !== 'medidas'): ?><p class="tm-nota">📏 Aprovechá para tomarle las medidas</p><?php endif; ?>
         <?php if ($tu['motivo'] === 'retirar' && $saldo > 0): ?><p class="tm-nota">💵 Saldo a cobrar: <?= e(pesos($saldo)) ?></p><?php endif; ?>
+        <?php if ($tu['motivo'] === 'traer' && $tu['id_solicitudes_presupuesto'] !== null
+                  && ($mt = materiales_de_solicitud($pdo, (int) $tu['id_solicitudes_presupuesto']))['quien'] === 'clienta' && $mt['filas']): ?>
+            <p class="tm-nota">🧵 Trae también los materiales</p>
+        <?php endif; ?>
         <div class="tm-botones">
             <?php
             if ($tu['motivo'] === 'traer') {
                 $boton('realizado', '✓ Ya me trajo la prenda', 'tm-ok');
+            } elseif ($tu['motivo'] === 'medidas') {
+                $boton('realizado', '✓ Ya le tomé las medidas', 'tm-ok');
             } elseif ($tu['motivo'] === 'retirar') {
                 $boton('retiro', '✓ Quedó bien: se la llevó', 'tm-ok');
             } else {
@@ -853,4 +887,74 @@ function etapa_siguiente(int $actual, bool $es_arreglo): ?int
         }
     }
     return null;
+}
+
+
+// =====================================================
+// TURNO SOLO PARA TOMAR MEDIDAS (la clienta no sabe medirse)
+// =====================================================
+
+/** Turno programado (de hoy en adelante) para tomarle las medidas a una clienta, o null. */
+function turno_medidas_cliente(PDO $pdo, int $id_cliente): ?array
+{
+    $stmt = $pdo->prepare("SELECT * FROM turnos_prueba WHERE id_clientes = :c AND motivo = 'medidas'
+                              AND estado = 'programado' AND fecha_hora >= NOW() ORDER BY fecha_hora LIMIT 1");
+    $stmt->execute([':c' => $id_cliente]);
+    return $stmt->fetch() ?: null;
+}
+
+/**
+ * La clienta pide un turno para que le tomen las medidas en el taller
+ * (desde Mis medidas). Si ya tenía uno, lo cambia. $para = clave de MEDIDAS_PARA.
+ * Devuelve [ok, mensaje].
+ */
+function reservar_turno_medidas(PDO $pdo, int $id_cliente, string $fecha_hora, string $para): array
+{
+    if (!isset(MEDIDAS_PARA[$para])) {
+        return [false, 'Contanos para qué necesitás las medidas.'];
+    }
+    $dt = DateTime::createFromFormat('!Y-m-d H:i', $fecha_hora);
+    if (!$dt || $dt->format('Y-m-d H:i') !== $fecha_hora) {
+        return [false, 'Elegí un día y un horario de la lista.'];
+    }
+    $f = $dt->format('Y-m-d');
+    $h = $dt->format('H:i');
+    $pdo->beginTransaction();
+    try {
+        $pdo->query('SELECT id_horarios_recepcion FROM horarios_recepcion FOR UPDATE')->fetchAll();
+        $libre = false;
+        foreach (horarios_libres($pdo) as $d) {
+            if ($d['fecha'] === $f && in_array($h, $d['horas'], true)) { $libre = true; break; }
+        }
+        if (!$libre) {
+            $pdo->rollBack();
+            return [false, 'Ese horario ya no está disponible. Elegí otro.'];
+        }
+        $viejo = turno_medidas_cliente($pdo, $id_cliente);
+        if ($viejo) {
+            $pdo->prepare("UPDATE turnos_prueba SET estado = 'cancelado' WHERE id_turnos_prueba = :id")
+                ->execute([':id' => $viejo['id_turnos_prueba']]);
+        }
+        $pdo->prepare("INSERT INTO turnos_prueba (id_clientes, fecha_hora, motivo, tomar_medidas, origen, nota)
+                       VALUES (:c, :f, 'medidas', 1, 'clienta', :n)")
+            ->execute([':c' => $id_cliente, ':f' => "$f $h:00", ':n' => MEDIDAS_PARA[$para]]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) { $pdo->rollBack(); }
+        throw $e;
+    }
+    $cuando = texto_turno("$f $h:00");
+    return [true, ($viejo ? 'Cambiaste tu turno: ' : '¡Listo! Te esperamos en el taller el ') . $cuando . ' para tomarte las medidas.'];
+}
+
+/** La clienta cancela su turno para tomarse las medidas. Devuelve [ok, mensaje]. */
+function cancelar_turno_medidas(PDO $pdo, int $id_cliente): array
+{
+    $t = turno_medidas_cliente($pdo, $id_cliente);
+    if (!$t) {
+        return [false, 'No tenés un turno para tomarte las medidas.'];
+    }
+    $pdo->prepare("UPDATE turnos_prueba SET estado = 'cancelado' WHERE id_turnos_prueba = :id AND id_clientes = :c")
+        ->execute([':id' => $t['id_turnos_prueba'], ':c' => $id_cliente]);
+    return [true, 'Cancelaste tu turno para tomarte las medidas.'];
 }

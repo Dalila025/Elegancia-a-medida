@@ -59,13 +59,27 @@ $monto_txt     = str_replace(',', '.', campo('monto_base'));
 $fecha_entrega = campo('fecha_entrega');
 $observaciones = campo('observaciones');
 
+// ¿Hacen falta materiales? Si la modista eligió que no, no se guarda ninguno.
+$necesita_mat    = campo('necesita_materiales') === '1';
+$nota_materiales = $necesita_mat ? campo('nota_materiales') : '';
+[$materiales, $errores_mat] = $necesita_mat ? leer_materiales($_POST['materiales'] ?? null) : [[], []];
+if ($necesita_mat && !$materiales && !$errores_mat) {
+    $errores_mat[] = 'Marcaste que hacen falta materiales: anotá al menos uno (por ejemplo la tela), o elegí «No hace falta».';
+}
+
 $datos = [
-    'monto_base'    => campo('monto_base'),
-    'fecha_entrega' => $fecha_entrega,
-    'observaciones' => $observaciones,
+    'monto_base'      => campo('monto_base'),
+    'fecha_entrega'   => $fecha_entrega,
+    'observaciones'   => $observaciones,
+    'nota_materiales' => $nota_materiales,
+    'materiales'      => $materiales,
+    'necesita_materiales' => $necesita_mat ? '1' : '0',
 ];
 
-$errores = [];
+$errores = $errores_mat;
+if (mb_strlen($nota_materiales) > NOTA_MATERIALES_MAX) {
+    $errores[] = 'La sugerencia de tela puede tener hasta ' . NOTA_MATERIALES_MAX . ' caracteres.';
+}
 
 
 // ---------- VALIDACIONES ----------
@@ -174,6 +188,11 @@ try {
         ':total'         => number_format($total, 2, '.', ''),
         ':obs'           => $observaciones,
     ]);
+
+    // Tela sugerida y materiales (la clienta elige al aceptar quién los consigue)
+    $stmt = $pdo->prepare('SELECT id_presupuestos FROM presupuestos WHERE id_solicitudes_presupuesto = :id');
+    $stmt->execute([':id' => $id]);
+    guardar_materiales($pdo, (int) $stmt->fetchColumn(), $materiales, $nota_materiales);
 
     $pdo->prepare('UPDATE solicitudes_presupuesto SET id_estados_solicitud = :nuevo WHERE id_solicitudes_presupuesto = :id')
         ->execute([':nuevo' => ESTADO_PRESUPUESTADO, ':id' => $id]);

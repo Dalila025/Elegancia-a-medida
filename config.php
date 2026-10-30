@@ -375,6 +375,21 @@ const TURNO_MOTIVOS = [
                   'cliente' => 'Retirá tu trabajo',
                   'aviso'   => 'Tu turno para retirar',
                   'texto'   => 'Te esperamos el {cuando} para retirar tu {prenda}: te la probás y, si te queda bien, te la llevás.'],
+    // Turno sin trabajo: la clienta no sabe medirse y pasa por el taller (lo pide desde Mis medidas)
+    'medidas' => ['nombre'  => 'Tomar medidas',
+                  'cliente' => 'Tu turno para tomarte las medidas',
+                  'aviso'   => 'Turno para tomarte las medidas',
+                  'texto'   => 'Te esperamos el {cuando} en el taller para tomarte las medidas.'],
+];
+// Turnos que la modista da desde el Taller (el de medidas lo pide la clienta)
+const TURNO_MOTIVOS_TALLER = ['traer', 'prueba', 'retirar'];
+// «¿Para qué necesitás las medidas?» al pedir turno para que se las tomen
+const MEDIDAS_PARA = [
+    'confeccion' => 'Para confeccionar una prenda a medida',
+    'arreglo'    => 'Para un arreglo',
+    'comprar'    => 'Para elegir mi talle y comprar',
+    'alquiler'   => 'Para alquilar un disfraz',
+    'otro'       => 'Para otra cosa',
 ];
 const TURNO_TEXTO_MEDIDAS = 'Aprovechamos para tomarte las medidas.';
 

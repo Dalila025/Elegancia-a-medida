@@ -329,6 +329,7 @@ $pagina_actual = 'solicitudes';
                                         <?php elseif ($s['etapa_taller'] === null): ?>
                                             <span class="espera-turno">⏳ Esperando que la clienta elija cuándo te trae la prenda</span>
                                         <?php endif; ?>
+                                        <?php if (($txt_mat = texto_materiales_modista(materiales_de_solicitud($pdo, $id))) !== ''): ?><span class="mat-panel"><?= e($txt_mat) ?></span><?php endif; ?>
                                         <a class="ir-taller" href="taller.php">✂ Taller: <?= e($s['etapa_taller'] ?? 'por empezar') ?> →</a>
                                     <?php endif; ?>
                                     <?php if ($s['ultimo_aviso_leido'] !== null): ?>

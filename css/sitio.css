@@ -739,3 +739,140 @@ a.btn-pill.btn-wa-turno:hover, a.btn-pill.btn-wa-turno:focus-visible { backgroun
 @keyframes latido { 0%, 100% { box-shadow: 0 0 0 0 rgba(156, 95, 104, .45); } 50% { box-shadow: 0 0 0 10px rgba(156, 95, 104, 0); } }
 @media (prefers-reduced-motion: reduce) { .flecha-siguiente, #btnEnviar.listo { animation: none; } }
 .flecha-siguiente[hidden], .pasos-solicitud[hidden], .prendas-rapidas[hidden] { display: none; }
+
+/* Mis medidas: turno para que se las tomen en el taller */
+.turno-medidas { margin: 0 0 20px; padding: 14px 16px; border-radius: 14px; border: 2px solid var(--dorado); background: #fffaf2; }
+.tmd-titulo { margin: 0; font-weight: 700; color: var(--oscuro); }
+.tmd-texto { margin: 8px 0; color: #6b6461; }
+.tmd-pedir > summary { cursor: pointer; list-style: none; }
+.tmd-pedir > summary::-webkit-details-marker { display: none; }
+.tmd-pedir > summary::after { content: ' ▾'; color: var(--acento); }
+.tmd-pedir[open] > summary::after { content: ' ▴'; }
+.tmd-para { border: 0; padding: 0; margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.tmd-para legend { font-weight: 700; font-size: .92rem; margin-bottom: 6px; }
+.tmd-para label { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #e4d6c3; border-radius: 999px; background: #fff; font-size: .88rem; cursor: pointer; }
+.tmd-para label:has(input:checked) { border-color: var(--acento); background: #f8eef0; font-weight: 600; }
+.tmd-acciones { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+.tmd-acciones form { margin: 0; }
+.tmd-cambiar summary { cursor: pointer; color: var(--acento); font-weight: 600; }
+.tmd-cambiar .selector-turno { margin-top: 10px; }
+.tmd-cancelar { border: 1px solid #d9a8a0; background: #fff; color: #a2462f; border-radius: 999px; padding: 6px 14px; cursor: pointer; font-weight: 600; }
+.tmd-wa { margin: 10px 0 0; font-size: .9rem; }
+.tmd-wa a { color: #1f7a45; font-weight: 600; }
+
+/* Mis medidas: solo lectura (las toma la modista) */
+.medidas-vista { background: #fff; border: 1px solid #eee3d3; border-radius: 16px; padding: 20px 22px; }
+.medidas-vista h2 { font-size: 1.15rem; margin: 0 0 6px; }
+.medidas-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 14px 0; }
+.medidas-lista div { background: #faf5ee; border-radius: 12px; padding: 10px 12px; }
+.medidas-lista dt { font-size: .8rem; color: #6b6461; }
+.medidas-lista dd { margin: 2px 0 0; font-size: 1.25rem; font-weight: 700; color: var(--oscuro); font-family: Georgia, serif; }
+.medidas-nota { font-style: italic; color: #6b6461; margin: 0 0 8px; }
+.medidas-uso { font-size: .9rem; margin: 0; }
+.medidas-vacio { color: #6b6461; margin: 10px 0 0; }
+
+/* ---------- Pie de página (redes con cartelito, enlaces animados) ---------- */
+.pie { position: relative; }
+.pie::before { content: ''; position: absolute; left: 0; right: 0; top: -3px; height: 3px;
+    background: linear-gradient(90deg, var(--acento), var(--dorado), var(--acento)); }
+.pie-col ul a { position: relative; display: inline-flex; align-items: center; gap: 6px;
+    background-image: linear-gradient(var(--dorado), var(--dorado)); background-size: 0 1px; background-repeat: no-repeat;
+    background-position: 0 100%; transition: background-size .3s ease, color .2s; padding-bottom: 1px; }
+.pie-col ul a:hover, .pie-col ul a:focus-visible { background-size: 100% 1px; color: #fff; text-decoration: none; }
+.pie-contacto .icono { width: 15px; height: 15px; color: var(--dorado); flex: none; }
+.pie-horario { color: rgba(255, 255, 255, .6); font-size: .85rem; }
+
+.pie-redes { display: flex; gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; }
+.pie-redes li { margin: 0; }
+.red-btn { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+    background: #f8f4ef; color: #231f20 !important; text-decoration: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .25); transition: background .3s ease, color .3s ease, transform .3s ease; }
+.red-btn .icono { width: 20px; height: 20px; }
+.red-tooltip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translate(-50%, 6px);
+    padding: 4px 10px; border-radius: 6px; font-size: .75rem; font-weight: 600; white-space: nowrap; color: #fff;
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .25s ease, transform .25s ease, visibility .25s; }
+.red-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: inherit; }
+.red-btn:hover, .red-btn:focus-visible { color: #fff !important; transform: translateY(-3px); }
+.red-btn:hover .red-tooltip, .red-btn:focus-visible .red-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.red-whatsapp:hover, .red-whatsapp:focus-visible, .red-whatsapp .red-tooltip { background: #1f9d55; border-color: #1f9d55; }
+.red-instagram:hover, .red-instagram:focus-visible, .red-instagram .red-tooltip { background: #c13584; border-color: #c13584; }
+.red-facebook:hover, .red-facebook:focus-visible, .red-facebook .red-tooltip { background: #1d5fbf; border-color: #1d5fbf; }
+.red-email:hover, .red-email:focus-visible, .red-email .red-tooltip { background: var(--acento); border-color: var(--acento); }
+.red-btn:focus-visible { outline: 2px solid var(--dorado); outline-offset: 3px; }
+
+.pie-legal-der { display: inline-flex; align-items: center; gap: 14px; }
+.pie-arriba { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, .25); color: #fff !important; transition: background .25s, border-color .25s, transform .25s; }
+.pie-arriba .icono { width: 18px; height: 18px; }
+.pie-arriba:hover { background: var(--acento); border-color: var(--acento); transform: translateY(-2px); text-decoration: none; }
+@media (prefers-reduced-motion: reduce) { .red-btn, .red-tooltip, .pie-arriba, .pie-col ul a { transition: none; } }
+
+/* Presupuesto: tela sugerida y materiales (funciones_materiales.php) */
+.materiales-caja { margin: 14px 0 4px; padding: 12px 14px; border-radius: 12px; background: #faf5ee; border: 1px solid #ecdfcc; text-align: left; }
+.mat-titulo { margin: 0 0 6px; font-weight: 700; color: var(--oscuro); }
+.mat-nota { margin: 0 0 8px; font-style: italic; color: #6b6461; }
+.mat-lista { list-style: none; margin: 0; padding: 0; }
+.mat-lista li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed #e4d6c3; font-size: .92rem; }
+.mat-lista li.es-tela { color: var(--oscuro); }
+.mat-precio { white-space: nowrap; color: #6b6461; }
+.mat-total { margin: 8px 0 0; font-size: .9rem; }
+.mat-quien { margin: 8px 0 0; font-size: .9rem; color: #1f6b3a; }
+.mat-elegir { border: 0; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; text-align: left; }
+.mat-elegir legend { font-weight: 700; margin-bottom: 6px; }
+.mat-elegir label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 2px solid #e4d6c3; border-radius: 12px; background: #fff; cursor: pointer; }
+.mat-elegir label:has(input:checked) { border-color: var(--acento); background: #f8eef0; }
+.mat-elegir input { margin-top: 3px; }
+.mat-elegir span { display: flex; flex-direction: column; gap: 2px; }
+.mat-elegir small { color: #6b6461; font-size: .84rem; }
+.ps-materiales { background: #fff; border: 1px dashed var(--dorado); border-radius: 10px; padding: 8px 10px; }
+/* Botones de redes dentro de la columna Contacto (sin el subrayado animado de los enlaces) */
+.pie-col ul.pie-redes a.red-btn { display: grid; padding: 0; background-image: none; }
+.pie-contacto a { overflow-wrap: anywhere; }
+
+/* Contacto del pie: ícono redondo al lado de cada dato (se puede tocar el ícono o el texto).
+   Al pasar el mouse, el círculo se llena desde abajo con el color de esa red. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pie-contacto { display: flex; flex-direction: column; gap: 10px; }
+.pie-contacto li { margin: 0; }
+.pie-col ul a.pie-dato { display: flex; align-items: center; gap: 12px; background-image: none; padding: 0; color: rgba(255, 255, 255, .85); }
+.pie-dato.sin-enlace { display: flex; align-items: center; gap: 12px; color: rgba(255, 255, 255, .6); font-size: .85rem; }
+.ci-icono { position: relative; overflow: hidden; flex: none; display: grid; place-items: center;
+    width: 38px; height: 38px; border-radius: 50%; background: #f8f4ef; color: #4d4446;
+    transition: color .3s ease-in-out, box-shadow .3s ease-in-out; }
+.ci-icono svg { position: relative; z-index: 1; width: 19px; height: 19px; }
+.ci-icono .filled { position: absolute; left: 0; bottom: 0; width: 100%; height: 0; background: var(--acento); transition: height .3s ease-in-out; }
+.ci-texto { overflow-wrap: anywhere; transition: color .3s ease; }
+.pie-dato:hover .ci-icono, .pie-dato:focus-visible .ci-icono { color: #fff; box-shadow: 3px 2px 25px rgba(0, 0, 0, .35); }
+.pie-dato:hover .ci-icono .filled, .pie-dato:focus-visible .ci-icono .filled { height: 100%; }
+.pie-dato:hover .ci-texto, .pie-dato:focus-visible .ci-texto { color: #fff; }
+.pie-dato:focus-visible { outline: 2px solid var(--dorado); outline-offset: 4px; border-radius: 999px; }
+.pie-dato[data-social="whatsapp"] .filled  { background: #1f9d55; }
+.pie-dato[data-social="telefono"] .filled  { background: #bf9d5c; }
+.pie-dato[data-social="email"] .filled     { background: #9c5f68; }
+.pie-dato[data-social="instagram"] .filled { background: #c13584; }
+.pie-dato[data-social="facebook"] .filled  { background: #1d5fbf; }
+.sin-enlace .ci-icono { background: rgba(255, 255, 255, .12); color: #bf9d5c; }
+@media (prefers-reduced-motion: reduce) { .ci-icono, .ci-icono .filled { transition: none; } }
+
+/* Contacto del pie v2: círculos con el color de cada red e ícono blanco de línea */
+.pie-dato .ci-icono { width: 40px; height: 40px; color: #fff; background: #6b6461;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .25); transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
+.pie-dato .ci-icono svg { width: 21px; height: 21px; }
+.pie-dato[data-social="whatsapp"]  .ci-icono { background: #25d366; }
+.pie-dato[data-social="telefono"]  .ci-icono { background: #bf9d5c; }
+.pie-dato[data-social="email"]     .ci-icono { background: #9c5f68; }
+.pie-dato[data-social="instagram"] .ci-icono { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%); }
+.pie-dato[data-social="facebook"]  .ci-icono { background: #1877f2; }
+.pie-dato:hover .ci-icono, .pie-dato:focus-visible .ci-icono { transform: translateY(-3px) scale(1.06); filter: brightness(1.08);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .4), 0 0 0 3px rgba(255, 255, 255, .15); }
+@media (prefers-reduced-motion: reduce) { .pie-dato .ci-icono { transition: none; } .pie-dato:hover .ci-icono { transform: none; } }
+
+/* Horario de atención: tarjetita debajo de la descripción de la marca */
+.pie-horario-card { display: flex; align-items: center; gap: 12px; margin-top: 16px; max-width: 300px;
+    padding: 12px 14px; border: 1px solid rgba(191, 157, 92, .45); border-radius: 14px; background: rgba(255, 255, 255, .04); }
+.phc-icono { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 50%;
+    background: rgba(191, 157, 92, .18); color: #bf9d5c; }
+.phc-icono svg { width: 20px; height: 20px; }
+.phc-titulo { display: block; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #bf9d5c; }
+.phc-texto { display: block; font-size: .88rem; color: rgba(255, 255, 255, .85); line-height: 1.4; }

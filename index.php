@@ -152,7 +152,7 @@ $ig = usuario_instagram($sitio['instagram'] ?? '');
             <li>
                 <span class="paso-marca" aria-hidden="true">2</span>
                 <h3>Tus medidas</h3>
-                <p>Las cargás en el sitio o te las tomo en el taller.</p>
+                <p>Pasás por el taller y te las tomo: quedan guardadas en tu cuenta.</p>
             </li>
             <li>
                 <span class="paso-marca" aria-hidden="true">3</span>
@@ -170,8 +170,8 @@ $ig = usuario_instagram($sitio['instagram'] ?? '');
             <div class="talle-promo-texto">
                 <span class="antetitulo">Guía de talles</span>
                 <h2>¿No sabés tu talle?</h2>
-                <p>En la ropa de fiesta el talle no depende de la edad. Cargá tus medidas una sola vez y en cada prenda te decimos cuál te queda.</p>
-                <a class="btn-pill" href="mis_medidas.php">Cargar mis medidas</a>
+                <p>En la ropa de fiesta el talle no depende de la edad. Pasá una vez por el taller, te tomo las medidas y en cada prenda te decimos cuál te queda.</p>
+                <a class="btn-pill" href="mis_medidas.php#turno-medidas">Pedir turno para medirme</a>
             </div>
             <div class="talle-promo-demo" aria-hidden="true">
                 <div class="demo-tarjeta">

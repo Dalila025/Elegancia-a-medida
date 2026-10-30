@@ -9,6 +9,8 @@
 --    dias_sin_atencion            días en que no atiende
 --    etapa 5 «Prueba final» pasa a llamarse «Lista para retirar»
 --    gastos.id_solicitudes_presupuesto  para qué trabajo fue el gasto (opcional)
+--    turnos para que le tomen las medidas a una clienta (sin trabajo)
+--    tela sugerida y materiales del presupuesto (y quién los consigue)
 --  Cómo: phpMyAdmin → clic en tu base (elegancia_a_medida) → pestaña SQL
 --  → pegá todo esto → Continuar. Si ya corriste una versión anterior de
 --  este archivo, no pasa nada: lo que ya existe se saltea.
@@ -72,3 +74,43 @@ ALTER TABLE `gastos`
   ADD CONSTRAINT `fk_gastos_solicitud` FOREIGN KEY IF NOT EXISTS (`id_solicitudes_presupuesto`)
       REFERENCES `solicitudes_presupuesto` (`id_solicitudes_presupuesto`)
       ON UPDATE CASCADE ON DELETE SET NULL;
+
+-- Turnos solo para tomar medidas (la clienta no sabe medirse)
+ALTER TABLE `turnos_prueba`
+  MODIFY `id_solicitudes_presupuesto` INT UNSIGNED NULL DEFAULT NULL
+      COMMENT 'Trabajo del turno (NULL en un turno solo para tomar medidas)',
+  ADD COLUMN IF NOT EXISTS `id_clientes` INT UNSIGNED NULL DEFAULT NULL
+      COMMENT 'Clienta del turno para tomar medidas (sin trabajo)'
+      AFTER `id_solicitudes_presupuesto`,
+  MODIFY `motivo` ENUM('prueba','traer','retirar','medidas') NOT NULL DEFAULT 'prueba'
+      COMMENT 'prueba = probarse, traer = trae la prenda, retirar = se prueba y retira, medidas = solo tomar medidas',
+  ADD INDEX IF NOT EXISTS `idx_turnos_prueba_cliente` (`id_clientes`),
+  ADD CONSTRAINT `fk_turnos_prueba_cliente` FOREIGN KEY IF NOT EXISTS (`id_clientes`)
+      REFERENCES `clientes` (`id_clientes`) ON UPDATE CASCADE ON DELETE CASCADE,
+  COMMENT = 'Turnos del taller: traer la prenda, pruebas, retirar y tomar medidas';
+
+-- Tela sugerida y materiales de cada presupuesto
+ALTER TABLE `presupuestos`
+  ADD COLUMN IF NOT EXISTS `nota_materiales` VARCHAR(255) NOT NULL DEFAULT ''
+      COMMENT 'Por qué sugiere esa tela o esos materiales' AFTER `observaciones`,
+  ADD COLUMN IF NOT EXISTS `materiales_quien` ENUM('','clienta','modista') NOT NULL DEFAULT ''
+      COMMENT 'Quién consigue los materiales (lo elige la clienta al aceptar)' AFTER `nota_materiales`,
+  ADD COLUMN IF NOT EXISTS `monto_materiales` DECIMAL(10,2) NOT NULL DEFAULT 0.00
+      COMMENT 'Sumado al total si los compra la modista' AFTER `materiales_quien`;
+
+CREATE TABLE IF NOT EXISTS `materiales_presupuesto` (
+  `id_materiales_presupuesto` INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  `id_presupuestos`           INT UNSIGNED     NOT NULL,
+  `tipo`                      ENUM('tela','material') NOT NULL DEFAULT 'material',
+  `descripcion`               VARCHAR(150)     NOT NULL COMMENT 'Ej: Satén azul, Cierre invisible 40 cm',
+  `cantidad`                  VARCHAR(30)      NOT NULL DEFAULT '' COMMENT 'Ej: 3 m, 6 u.',
+  `precio`                    DECIMAL(10,2)    NULL DEFAULT NULL COMMENT 'Costo aproximado si lo compra la modista; NULL = a confirmar',
+  `orden`                     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id_materiales_presupuesto`),
+  KEY `idx_materiales_presupuesto` (`id_presupuestos`, `orden`),
+  CONSTRAINT `fk_materiales_presupuesto`
+      FOREIGN KEY (`id_presupuestos`) REFERENCES `presupuestos` (`id_presupuestos`)
+      ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `chk_materiales_precio` CHECK (`precio` IS NULL OR `precio` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  COMMENT='Tela sugerida y materiales de cada presupuesto';

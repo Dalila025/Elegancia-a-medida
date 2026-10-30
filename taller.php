@@ -89,11 +89,11 @@ $pagina_actual = 'taller';
                             <div class="agenda-fecha"><strong><?= $d->format('d/m') ?></strong><span><?= $d->format('H:i') ?></span></div>
                             <div class="agenda-info">
                                 <span class="motivo-turno motivo-<?= e($tu['motivo']) ?>"><?= e(motivo_turno($tu['motivo'])['nombre']) ?></span>
-                                <span><strong><?= e($tu['cliente']) ?></strong> · <?= e($tu['tipo_prenda']) ?></span>
+                                <span><strong><?= e($tu['cliente']) ?></strong> · <?= $tu['motivo'] === 'medidas' ? e($tu['nota'] !== '' ? $tu['nota'] : 'Tomar medidas') : e($tu['tipo_prenda']) ?></span>
                                 <?php if ($tu['origen'] === 'clienta'): ?><span class="tc-origen">Lo eligió la clienta</span><?php endif; ?>
-                                <?php if ((int) $tu['tomar_medidas'] === 1): ?><span class="tc-medidas">📏 Tomarle las medidas · <a href="cliente.php?id=<?= (int) $tu['id_clientes'] ?>#medidas">cargarlas</a></span><?php endif; ?>
+                                <?php if ((int) $tu['tomar_medidas'] === 1): ?><span class="tc-medidas">📏 <?= $tu['motivo'] === 'medidas' ? 'Viene solo a que le tomes las medidas' : 'Tomarle las medidas' ?> · <a href="cliente.php?id=<?= (int) $tu['id_clientes'] ?>#medidas">cargarlas</a></span><?php endif; ?>
                                 <?php if ($tu['motivo'] === 'retirar'): ?><span class="ref-catalogo">Se lo prueba: si queda bien, se lo lleva.</span><?php endif; ?>
-                                <?php if ($tu['nota'] !== ''): ?><span class="ref-catalogo"><?= e($tu['nota']) ?></span><?php endif; ?>
+                                <?php if ($tu['nota'] !== '' && $tu['motivo'] !== 'medidas'): ?><span class="ref-catalogo"><?= e($tu['nota']) ?></span><?php endif; ?>
                                 <?php
                                 $saldo_tu = $tu['motivo'] === 'retirar' ? saldo_trabajo($pdo, (int) $tu['id_solicitudes_presupuesto']) : 0.0;
                                 if ($wa_tu = enlace_whatsapp_cliente($tu['telefono'] ?? '', wa_modista_a_clienta($tu['cliente'], $tu['tipo_prenda'], $tu['codigo_seguimiento'], $tu, $saldo_tu))): ?>
@@ -105,6 +105,7 @@ $pagina_actual = 'taller';
                                 // Botones según para qué es el turno
                                 $botones = match ($tu['motivo']) {
                                     'traer'   => ['realizado' => ['Trajo la prenda', 'accion-2']],
+                                    'medidas' => ['realizado' => ['Ya le tomé las medidas', 'accion-2']],
                                     'retirar' => ['retiro'    => ['Quedó bien: se lo llevó', 'accion-2']],
                                     default   => ['realizado' => ['Hecho', 'accion-2']],
                                 };
@@ -169,6 +170,7 @@ $pagina_actual = 'taller';
                                 <?php if ($wa_lista): ?><p class="tc-link"><a class="tc-wa" href="<?= e($wa_lista) ?>" target="_blank" rel="noopener">💬 Avisale por WhatsApp que ya puede retirar</a></p><?php endif; ?>
                             <?php endif; ?>
                             <p class="tc-link"><a href="cliente.php?id=<?= (int) $t['id_clientes'] ?>#medidas">📏 Medidas de la clienta</a></p>
+                            <?php if (($txt_mat = texto_materiales_modista(materiales_de_solicitud($pdo, $idt))) !== ''): ?><p class="tc-materiales"><?= e($txt_mat) ?></p><?php endif; ?>
                             <p class="tc-costos"><a href="trabajo.php?id=<?= $idt ?>">💰 Gastos: <?= e(pesos($gastado[$idt] ?? 0)) ?> · cargar o ver</a></p>
                             <?php
                             // Botón «Siguiente»: pasa a la etapa que sigue con un solo toque.
@@ -208,7 +210,7 @@ $pagina_actual = 'taller';
                                     <input type="hidden" name="id" value="<?= $idt ?>">
                                     <label for="mo-<?= $idt ?>">Turno para</label>
                                     <select id="mo-<?= $idt ?>" name="motivo">
-                                        <?php foreach (TURNO_MOTIVOS as $clave => $m): ?>
+                                        <?php foreach (TURNO_MOTIVOS_TALLER as $clave): $m = TURNO_MOTIVOS[$clave]; ?>
                                             <option value="<?= e($clave) ?>" <?= $clave === $motivo_def ? 'selected' : '' ?>><?= e($m['nombre']) ?></option>
                                         <?php endforeach; ?>
                                     </select>

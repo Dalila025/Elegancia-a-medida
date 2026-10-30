@@ -241,7 +241,7 @@ function validar_talle_elegido(PDO $pdo, int $id_producto, string $modalidad, st
             return ['', 'Las prendas en alquiler se eligen por talle (no se hacen a medida).'];
         }
         if (!medidas_suficientes(medidas_vigentes($pdo, $id_cliente))) {
-            return ['', 'Para pedirla a medida, primero cargá tus medidas (busto, cintura y cadera).'];
+            return ['', 'Para pedirla a medida, primero pasá por el taller a que te tomen las medidas (lo pedís desde «Mis medidas»).'];
         }
         return [TALLE_A_MEDIDA, null];
     }

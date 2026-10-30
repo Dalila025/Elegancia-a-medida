@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
+require_once __DIR__ . '/acceso_campos.php';
 iniciar_sesion();
 require_once __DIR__ . '/conexion.php';
 
@@ -105,16 +106,21 @@ $pagina_actual = 'registro';
     <title>Registrarse - Elegancia a Medida</title>
     <link rel="stylesheet" href="<?= asset('css/cliente.css') ?>">
     <link rel="stylesheet" href="<?= asset('css/sitio.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/acceso.css') ?>">
 </head>
 <body>
 <?php require __DIR__ . '/encabezado_cliente.php'; ?>
-<main class="pagina">
-    <div class="container angosta">
-        <h1>Registrarse</h1>
-        <p class="subtitle">Con tu cuenta pedís presupuestos y respondés a la modista.</p>
+<main class="acceso-pagina">
+    <form method="post" action="registro.php" class="acceso-card ancha" novalidate>
+        <input type="hidden" name="token" value="<?= e(token_cliente()) ?>">
+        <input type="hidden" name="volver" value="<?= e($volver) ?>">
+
+        <p class="acceso-marca">Elegancia <em>a Medida</em></p>
+        <h1 class="acceso-titulo">Crear cuenta</h1>
+        <p class="acceso-sub">Con tu cuenta pedís presupuestos, elegís turnos y seguís tus trabajos.</p>
 
         <?php if ($errores): ?>
-            <div class="alert alert-error" role="alert">
+            <div class="acceso-aviso error" role="alert">
                 <?php if (count($errores) === 1): ?>
                     <?= e($errores[0]) ?>
                 <?php else: ?>
@@ -124,44 +130,26 @@ $pagina_actual = 'registro';
             </div>
         <?php endif; ?>
 
-        <form method="post" action="registro.php" novalidate>
-            <input type="hidden" name="token" value="<?= e(token_cliente()) ?>">
-            <input type="hidden" name="volver" value="<?= e($volver) ?>">
+        <?php campo_acceso('persona', 'nombre', 'Nombre completo', 'text', $datos['nombre'],
+            'maxlength="' . NOMBRE_MAX . '" required autocomplete="name"'); ?>
+        <?php campo_acceso('telefono', 'telefono', 'Teléfono (la modista te contacta acá)', 'tel', $datos['telefono'],
+            'maxlength="' . TELEFONO_MAX . '" required autocomplete="tel"'); ?>
+        <?php campo_acceso('arroba', 'email', 'Email', 'email', $datos['email'],
+            'maxlength="' . EMAIL_MAX . '" required autocomplete="email"'); ?>
+        <?php campo_acceso('candado', 'clave', 'Contraseña', 'password', '',
+            'minlength="' . CLAVE_MIN . '" maxlength="' . CLAVE_MAX . '" required autocomplete="new-password" aria-describedby="ayuda-clave"'); ?>
+        <p class="acceso-ayuda" id="ayuda-clave">Mínimo <?= CLAVE_MIN ?> caracteres, con al menos una letra y un número.</p>
+        <?php campo_acceso('candado', 'clave2', 'Repetir contraseña', 'password', '',
+            'maxlength="' . CLAVE_MAX . '" required autocomplete="new-password"'); ?>
 
-            <div class="form-group">
-                <label for="nombre">Nombre completo <span class="required">*</span></label>
-                <input type="text" id="nombre" name="nombre" maxlength="<?= NOMBRE_MAX ?>" required
-                       autocomplete="name" value="<?= e($datos['nombre']) ?>" placeholder="Ej: María González">
-            </div>
-            <div class="form-group">
-                <label for="telefono">Teléfono <span class="required">*</span></label>
-                <input type="tel" id="telefono" name="telefono" maxlength="<?= TELEFONO_MAX ?>" required
-                       autocomplete="tel" value="<?= e($datos['telefono']) ?>" placeholder="Ej: 11 1234-5678">
-                <div class="ayuda">La modista te contacta a este número.</div>
-            </div>
-            <div class="form-group">
-                <label for="email">Email <span class="required">*</span></label>
-                <input type="email" id="email" name="email" maxlength="<?= EMAIL_MAX ?>" required
-                       autocomplete="email" value="<?= e($datos['email']) ?>" placeholder="tu@email.com">
-            </div>
-            <div class="form-group">
-                <label for="clave">Contraseña <span class="required">*</span></label>
-                <input type="password" id="clave" name="clave" minlength="<?= CLAVE_MIN ?>" maxlength="<?= CLAVE_MAX ?>"
-                       required autocomplete="new-password">
-                <div class="ayuda">Mínimo <?= CLAVE_MIN ?> caracteres, con al menos una letra y un número.</div>
-            </div>
-            <div class="form-group">
-                <label for="clave2">Repetir contraseña <span class="required">*</span></label>
-                <input type="password" id="clave2" name="clave2" maxlength="<?= CLAVE_MAX ?>" required autocomplete="new-password">
-            </div>
-
-            <button type="submit" class="btn">Crear cuenta</button>
-        </form>
-
-        <p class="pie-form">¿Ya tenés cuenta? <a href="login.php?volver=<?= urlencode($volver) ?>">Iniciá sesión</a></p>
-    </div>
+        <div class="acceso-botones">
+            <button type="submit" class="acceso-btn principal">Crear cuenta</button>
+            <a class="acceso-btn" href="login.php?volver=<?= e(urlencode($volver)) ?>">Ya tengo cuenta</a>
+        </div>
+    </form>
 </main>
 <?php require __DIR__ . '/pie_cliente.php'; ?>
+<?php script_acceso(); ?>
 <script src="<?= asset('js/sitio.js') ?>"></script>
 </body>
 </html>

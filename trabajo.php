@@ -36,6 +36,7 @@ try {
     http_response_code(500);
     die('No se pudo cargar el trabajo.');
 }
+$mat = materiales_de_solicitud($pdo, $id);
 $admite = in_array((int) $t['id_estados_solicitud'], TRABAJO_ESTADOS_CON_GASTOS, true) && $t['id_presupuestos'] !== null;
 
 // Errores devueltos por guardar_gasto.php
@@ -100,6 +101,31 @@ $pagina_actual = 'gastos';
                 <div class="flash flash-error" role="status">Gastaste más de lo que cobrás por este trabajo. Revisá el precio para la próxima.</div>
             <?php endif; ?>
         </section>
+
+        <?php if ($mat['filas']): ?>
+        <section class="tarjeta">
+            <h2>🧵 Tela y materiales del presupuesto</h2>
+            <p class="ayuda" style="margin:-6px 0 10px">
+                <?= $mat['quien'] === 'modista' ? 'Los comprás vos (se sumaron ' . e(pesos($mat['monto'])) . ' al total). Cuando los compres, tocá «Cargar como gasto» para anotar lo que pagaste.'
+                   : ($mat['quien'] === 'clienta' ? 'Los trae la clienta: no hace falta que los compres.' : 'La clienta todavía no eligió quién los consigue.') ?>
+            </p>
+            <ul class="lista-gastos-trabajo">
+                <?php foreach ($mat['filas'] as $mf): ?>
+                    <li>
+                        <div><strong><?= $mf['tipo'] === 'tela' ? 'Tela: ' : '' ?><?= e($mf['descripcion']) ?></strong><?= $mf['cantidad'] !== '' ? ' · ' . e($mf['cantidad']) : '' ?></div>
+                        <div class="lgt-derecha">
+                            <span><?= $mf['precio'] !== null ? e(pesos((float) $mf['precio'])) : 'a confirmar' ?></span>
+                            <?php if ($mat['quien'] === 'modista' && $admite): ?>
+                                <button type="button" class="btn-accion accion-presupuestar usar-material"
+                                        data-desc="<?= e($mf['descripcion']) ?>" data-cant="<?= e($mf['cantidad']) ?>"
+                                        data-precio="<?= e((string) ($mf['precio'] ?? '')) ?>" data-tela="<?= $mf['tipo'] === 'tela' ? '1' : '0' ?>">Cargar como gasto</button>
+                            <?php endif; ?>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </section>
+        <?php endif; ?>
 
         <div class="gastos-grid">
             <section class="tarjeta" id="form-gasto">
@@ -200,5 +226,21 @@ $pagina_actual = 'gastos';
             </section>
         </div>
     </main>
+<script>
+// «Cargar como gasto»: completa el formulario con el material (el monto se ajusta a lo que pagaste)
+document.querySelectorAll('.usar-material').forEach(function (b) {
+    b.addEventListener('click', function () {
+        document.getElementById('g-desc').value = b.dataset.desc;
+        document.getElementById('g-cant').value = b.dataset.cant;
+        document.getElementById('g-monto').value = b.dataset.precio;
+        var rubro = document.getElementById('g-rubro');
+        if (rubro && b.dataset.tela !== '1') {
+            Array.prototype.forEach.call(rubro.options, function (o) { if (/mercer|av[ií]o/i.test(o.text)) { rubro.value = o.value; } });
+        }
+        document.getElementById('form-gasto').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('g-monto').focus();
+    });
+});
+</script>
 </body>
 </html>

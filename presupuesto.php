@@ -80,6 +80,15 @@ unset($_SESSION['form_presupuesto']);
 $val_monto = $viejo['monto_base']    ?? ($presu ? $presu['monto_base'] : '');
 $val_fecha = $viejo['fecha_entrega'] ?? ($presu ? $presu['fecha_entrega'] : '');
 $val_obs   = $viejo['observaciones'] ?? ($presu ? $presu['observaciones'] : '');
+// Tela sugerida y materiales (funciones_materiales.php)
+$val_nota_mat = $viejo['nota_materiales'] ?? ($presu ? $presu['nota_materiales'] : '');
+$val_mat = $viejo['materiales'] ?? materiales_de($pdo, $presu ? (int) $presu['id_presupuestos'] : null);
+$val_mat = array_values($val_mat);
+// ¿Hacen falta materiales? Al editar: sí si ya tenía; si volvió con errores, lo que eligió.
+$val_necesita = isset($viejo['necesita_materiales']) ? $viejo['necesita_materiales'] === '1' : (bool) array_filter($val_mat, fn($m) => trim((string) $m['descripcion']) !== '');
+while (count($val_mat) < MATERIALES_FILAS) {
+    $val_mat[] = ['tipo' => count($val_mat) === 0 ? 'tela' : 'material', 'descripcion' => '', 'cantidad' => '', 'precio' => null];
+}
 
 // Si la clienta pidió un arreglo de la lista de precios, ese precio va como monto base.
 $arreglo_elegido = $lista_arreglos ? arreglo_de_solicitud($lista_arreglos, (string) $sol['descripcion']) : null;
@@ -225,6 +234,46 @@ $pagina_actual = 'solicitudes';
                               placeholder="Ej: incluye dos pruebas; la tela la trae la clienta; seña del 50 %."><?= e((string) $val_obs) ?></textarea>
                 </div>
 
+                <fieldset class="materiales-pregunta">
+                    <legend>🧵 ¿Hacen falta materiales para este trabajo?</legend>
+                    <label><input type="radio" name="necesita_materiales" value="0" <?= !$val_necesita ? 'checked' : '' ?>>
+                        <span><strong>No hace falta</strong><small>La clienta no tiene que traer ni pagar materiales aparte.</small></span></label>
+                    <label><input type="radio" name="necesita_materiales" value="1" <?= $val_necesita ? 'checked' : '' ?>>
+                        <span><strong>Sí, hacen falta</strong><small>Le decís qué materiales y qué tela sugerís; ella elige si los trae o si los comprás vos.</small></span></label>
+                </fieldset>
+
+                <fieldset class="materiales-form" id="materiales-form" <?= $val_necesita ? '' : 'hidden' ?>>
+                    <legend>Tela sugerida y materiales</legend>
+                    <p class="ayuda">Sugerile la tela según el trabajo y anotá lo que hace falta (cierre, botones, entretela…) con un precio aproximado.
+                        Al aceptar, la clienta elige si los trae ella o si los comprás vos (en ese caso se suma al total).</p>
+                    <div class="campo">
+                        <label for="nota_materiales">Por qué esa tela (la ve la clienta)</label>
+                        <input type="text" id="nota_materiales" name="nota_materiales" maxlength="<?= NOTA_MATERIALES_MAX ?>"
+                               value="<?= e((string) $val_nota_mat) ?>" placeholder="Ej: el satén cae bien en la falda larga y no se arruga">
+                    </div>
+                    <div class="tabla-scroll">
+                        <table class="tabla-materiales">
+                            <thead><tr><th>Tipo</th><th>Qué</th><th>Cantidad</th><th>Precio aprox. ($)</th></tr></thead>
+                            <tbody>
+                            <?php foreach ($val_mat as $i => $m): ?>
+                                <tr>
+                                    <td><select name="materiales[<?= $i ?>][tipo]" aria-label="Tipo del material <?= $i + 1 ?>">
+                                        <?php foreach (MATERIALES_TIPOS as $k => $txt): ?><option value="<?= $k ?>" <?= ($m['tipo'] ?? 'material') === $k ? 'selected' : '' ?>><?= e($txt) ?></option><?php endforeach; ?>
+                                    </select></td>
+                                    <td><input type="text" name="materiales[<?= $i ?>][descripcion]" maxlength="<?= MATERIAL_DESC_MAX ?>" value="<?= e((string) $m['descripcion']) ?>"
+                                               placeholder="<?= $i === 0 ? 'Ej: Satén azul' : ($i === 1 ? 'Ej: Cierre invisible 40 cm' : '') ?>" aria-label="Material <?= $i + 1 ?>"></td>
+                                    <td><input type="text" name="materiales[<?= $i ?>][cantidad]" maxlength="<?= MATERIAL_CANT_MAX ?>" value="<?= e((string) $m['cantidad']) ?>"
+                                               placeholder="<?= $i === 0 ? '3 m' : '' ?>" aria-label="Cantidad del material <?= $i + 1 ?>"></td>
+                                    <td><input type="text" inputmode="decimal" class="mat-precio-in" name="materiales[<?= $i ?>][precio]" value="<?= e((string) ($m['precio'] ?? '')) ?>"
+                                               placeholder="<?= $i === 0 ? '27000' : '' ?>" aria-label="Precio del material <?= $i + 1 ?>"></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="ayuda" id="mat-total" aria-live="polite"></p>
+                </fieldset>
+
                 <div class="botonera">
                     <button type="submit" class="btn-guardar">Guardar presupuesto</button>
                     <a href="modista.php" class="btn-secundario">Cancelar</a>
@@ -293,6 +342,28 @@ $pagina_actual = 'solicitudes';
         var $plazo = document.getElementById('plazo_dias');
         var $monto = document.getElementById('monto_base');
         var $btnCliente = document.getElementById('usar-fecha-cliente');
+        // ¿Hacen falta materiales? Muestra u oculta la tabla (oculta, sus campos no se envían)
+        var $matForm = document.getElementById('materiales-form');
+        function verMateriales() {
+            var si = document.querySelector('input[name="necesita_materiales"][value="1"]').checked;
+            $matForm.hidden = !si;
+            $matForm.disabled = !si;
+        }
+        document.querySelectorAll('input[name="necesita_materiales"]').forEach(function (r) { r.addEventListener('change', verMateriales); });
+        verMateriales();
+
+        // Materiales: suma lo que costaría si los compra la modista
+        var $matTotal = document.getElementById('mat-total');
+        function sumarMateriales() {
+            var t = 0, n = 0;
+            document.querySelectorAll('.mat-precio-in').forEach(function (i) {
+                var v = parseFloat(i.value.replace(',', '.'));
+                if (!isNaN(v) && v > 0) { t += v; n++; }
+            });
+            $matTotal.textContent = n ? 'Si los comprás vos, se suman $ ' + t.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' al total.' : '';
+        }
+        document.querySelectorAll('.mat-precio-in').forEach(function (i) { i.addEventListener('input', sumarMateriales); });
+        sumarMateriales();
         // Lista de precios de arreglos: «Usar» pone ese precio como monto base
         document.querySelectorAll('.usar-precio').forEach(function (b) {
             b.addEventListener('click', function () {

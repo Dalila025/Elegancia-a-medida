@@ -25,6 +25,12 @@ $error = '';
 $email = '';
 $flash = tomar_flash_cliente();
 
+// «¿Olvidaste tu contraseña?»: por ahora la blanquea la modista (WhatsApp o email)
+require_once __DIR__ . '/acceso_campos.php';
+$sitio_acc = datos_sitio($pdo);
+$olvido = enlace_whatsapp($sitio_acc['whatsapp'] ?? '', 'Hola! Olvidé mi contraseña de la web de Elegancia a Medida. Mi email es: ')
+       ?? (!empty($sitio_acc['email']) ? 'mailto:' . $sitio_acc['email'] . '?subject=' . rawurlencode('Olvidé mi contraseña') : null);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $email = isset($_POST['email']) && is_string($_POST['email']) ? mb_strtolower(trim($_POST['email'])) : '';
@@ -61,42 +67,42 @@ $pagina_actual = 'login';
     <title>Iniciar sesión - Elegancia a Medida</title>
     <link rel="stylesheet" href="<?= asset('css/cliente.css') ?>">
     <link rel="stylesheet" href="<?= asset('css/sitio.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/acceso.css') ?>">
 </head>
 <body>
 <?php require __DIR__ . '/encabezado_cliente.php'; ?>
-<main class="pagina">
-    <div class="container angosta">
-        <h1>Iniciar sesión</h1>
-        <p class="subtitle">Entrá a tu cuenta para pedir presupuestos y ver las respuestas.</p>
+<main class="acceso-pagina">
+    <form method="post" action="login.php" class="acceso-card" novalidate>
+        <input type="hidden" name="token" value="<?= e(token_cliente()) ?>">
+        <input type="hidden" name="volver" value="<?= e($volver) ?>">
+
+        <p class="acceso-marca">Elegancia <em>a Medida</em></p>
+        <h1 class="acceso-titulo">Ingresar</h1>
+        <p class="acceso-sub">Entrá a tu cuenta para pedir presupuestos y seguir tus trabajos.</p>
 
         <?php if ($flash): ?>
-            <div class="alert alert-<?= e($flash['tipo']) ?>"><?= e($flash['mensaje']) ?></div>
+            <div class="acceso-aviso <?= $flash['tipo'] === 'error' ? 'error' : '' ?>" role="status"><?= e($flash['mensaje']) ?></div>
         <?php endif; ?>
         <?php if ($error): ?>
-            <div class="alert alert-error" role="alert"><?= e($error) ?></div>
+            <div class="acceso-aviso error" role="alert"><?= e($error) ?></div>
         <?php endif; ?>
 
-        <form method="post" action="login.php" novalidate>
-            <input type="hidden" name="token" value="<?= e(token_cliente()) ?>">
-            <input type="hidden" name="volver" value="<?= e($volver) ?>">
+        <?php campo_acceso('arroba', 'email', 'Email', 'email', $email,
+            'maxlength="' . EMAIL_MAX . '" required autocomplete="email" autofocus'); ?>
+        <?php campo_acceso('candado', 'clave', 'Contraseña', 'password', '',
+            'maxlength="' . CLAVE_MAX . '" required autocomplete="current-password"'); ?>
 
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" maxlength="<?= EMAIL_MAX ?>" required
-                       autocomplete="email" value="<?= e($email) ?>" autofocus>
-            </div>
-            <div class="form-group">
-                <label for="clave">Contraseña</label>
-                <input type="password" id="clave" name="clave" maxlength="<?= CLAVE_MAX ?>" required autocomplete="current-password">
-            </div>
-
-            <button type="submit" class="btn">Iniciar sesión</button>
-        </form>
-
-        <p class="pie-form">¿No tenés cuenta? <a href="registro.php?volver=<?= urlencode($volver) ?>">Registrate</a></p>
-    </div>
+        <div class="acceso-botones">
+            <button type="submit" class="acceso-btn principal">Ingresar</button>
+            <a class="acceso-btn" href="registro.php?volver=<?= e(urlencode($volver)) ?>">Crear cuenta</a>
+        </div>
+        <?php if ($olvido): ?>
+            <a class="acceso-btn olvido" href="<?= e($olvido) ?>" target="_blank" rel="noopener">¿Olvidaste tu contraseña?</a>
+        <?php endif; ?>
+    </form>
 </main>
 <?php require __DIR__ . '/pie_cliente.php'; ?>
+<?php script_acceso(); ?>
 <script src="<?= asset('js/sitio.js') ?>"></script>
 </body>
 </html>

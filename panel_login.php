@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/funciones.php';
+require_once __DIR__ . '/acceso_campos.php';
 iniciar_sesion();
 require_once __DIR__ . '/conexion.php';
 
@@ -61,40 +62,36 @@ $token = token_modista();
     <title>Ingreso al panel · Elegancia a Medida</title>
     <link rel="stylesheet" href="<?= asset('css/modista.css') ?>">
     <link rel="stylesheet" href="<?= asset('css/panel.css') ?>">
+    <link rel="stylesheet" href="<?= asset('css/acceso.css') ?>">
 </head>
-<body class="pantalla-login">
-    <main class="login-card">
-        <div class="brand">
-            <span class="brand-mark">E</span>
-            <div>
-                <h1>Elegancia a Medida</h1>
-                <p class="subtitle">Panel de la modista</p>
-            </div>
-        </div>
-
-        <?php if ($flash): ?>
-            <div class="flash <?= $flash['tipo'] === 'ok' ? 'flash-ok' : 'flash-error' ?>"><?= e($flash['mensaje']) ?></div>
-        <?php endif; ?>
-        <?php if ($error): ?>
-            <div class="flash flash-error" role="alert"><?= e($error) ?></div>
-        <?php endif; ?>
-
-        <form method="post" action="panel_login.php" class="form-panel" novalidate>
+<body class="pantalla-login acceso-fondo">
+    <main class="acceso-pagina">
+        <form method="post" action="panel_login.php" class="acceso-card" novalidate>
             <input type="hidden" name="token" value="<?= e($token) ?>">
             <input type="hidden" name="volver" value="<?= e($volver) ?>">
-            <div class="campo">
-                <label for="email">Email</label>
-                <input type="text" inputmode="email" id="email" name="email" maxlength="<?= EMAIL_MAX ?>" required
-                       autocomplete="username" value="<?= e($email) ?>" autofocus>
-            </div>
-            <div class="campo">
-                <label for="clave">Contraseña</label>
-                <input type="password" id="clave" name="clave" maxlength="<?= CLAVE_MAX ?>" required autocomplete="current-password">
-            </div>
-            <button type="submit" class="btn-guardar btn-ancho">Ingresar</button>
-        </form>
 
-        <p class="login-pie"><a href="index.php">← Volver al sitio</a></p>
+            <p class="acceso-marca">Elegancia <em>a Medida</em></p>
+            <h1 class="acceso-titulo">Panel de la modista</h1>
+            <p class="acceso-sub">Solicitudes, taller, turnos, cobros y gastos.</p>
+
+            <?php if ($flash): ?>
+                <div class="acceso-aviso <?= $flash['tipo'] === 'ok' ? '' : 'error' ?>" role="status"><?= e($flash['mensaje']) ?></div>
+            <?php endif; ?>
+            <?php if ($error): ?>
+                <div class="acceso-aviso error" role="alert"><?= e($error) ?></div>
+            <?php endif; ?>
+
+            <?php campo_acceso('arroba', 'email', 'Email', 'text', $email,
+                'inputmode="email" maxlength="' . EMAIL_MAX . '" required autocomplete="username" autofocus'); ?>
+            <?php campo_acceso('candado', 'clave', 'Contraseña', 'password', '',
+                'maxlength="' . CLAVE_MAX . '" required autocomplete="current-password"'); ?>
+
+            <div class="acceso-botones">
+                <button type="submit" class="acceso-btn principal">Ingresar</button>
+                <a class="acceso-btn" href="index.php">Volver al sitio</a>
+            </div>
+        </form>
     </main>
+    <?php script_acceso(); ?>
 </body>
 </html>

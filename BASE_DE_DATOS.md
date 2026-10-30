@@ -52,6 +52,7 @@ Así, cuando en una tabla ves `id_clientes`, sabés que apunta a la tabla `clien
 | 27 | `turnos_prueba` | `id_turnos_prueba` | `id_solicitudes_presupuesto` → solicitudes_presupuesto |
 | 28 | `horarios_recepcion` | `id_horarios_recepcion` | — |
 | 29 | `dias_sin_atencion` | `fecha` | — |
+| 30 | `materiales_presupuesto` | `id_materiales_presupuesto` | `id_presupuestos` → presupuestos |
 
 ## Diagrama
 
@@ -217,6 +218,9 @@ Uno por solicitud (si la modista lo corrige, se actualiza la misma fila).
 | fecha_entrega, plazo_dias | DATE, SMALLINT | los elige la modista |
 | recargo_porcentaje, monto_total | DECIMAL | se guardan fijos; `monto_total = monto_base × (100 + recargo) / 100` |
 | observaciones | VARCHAR(500) | |
+| nota_materiales | VARCHAR(255) | por qué sugiere esa tela o esos materiales (la ve la clienta) |
+| materiales_quien | ENUM('','clienta','modista') | quién consigue los materiales; lo elige la clienta al aceptar |
+| monto_materiales | DECIMAL(10,2) | costo de los materiales sumado al total si los compra la modista |
 | fecha_respuesta_cliente | DATETIME NULL | cuándo el cliente aceptó o rechazó |
 | comentario_cliente | VARCHAR(300) | motivo opcional del rechazo (lo ve la modista) |
 | fecha_creacion, fecha_actualizacion | TIMESTAMP, DATETIME NULL | |
@@ -438,9 +442,10 @@ Turnos del taller: traer la prenda, pruebas y retirar. Los da la modista o los e
 | Columna | Tipo | Nota |
 |---|---|---|
 | id_turnos_prueba | INT UNSIGNED PK | |
-| id_solicitudes_presupuesto | INT UNSIGNED → `solicitudes_presupuesto` | |
+| id_solicitudes_presupuesto | INT UNSIGNED NULL → `solicitudes_presupuesto` | NULL en un turno solo para medidas |
+| id_clientes | INT UNSIGNED NULL → `clientes` | clienta del turno para medidas (sin trabajo) |
 | fecha_hora | DATETIME | |
-| motivo | ENUM('prueba','traer','retirar') | para qué es: probarse, traer la prenda (arreglos; ese día se la prueba) o retirar (se lo prueba y, si queda bien, se lo lleva) |
+| motivo | ENUM('prueba','traer','retirar','medidas') | `medidas` = turno sin trabajo, solo para tomarle las medidas a una clienta que no sabe medirse · para qué es: probarse, traer la prenda (arreglos; ese día se la prueba) o retirar (se lo prueba y, si queda bien, se lo lleva) |
 | tomar_medidas | TINYINT(1) | 1 = se aprovecha el turno para tomarle las medidas |
 | origen | ENUM('modista','clienta') | quién eligió el horario (la clienta lo elige desde su solicitud) |
 | nota | VARCHAR(255) | ej. «traé los zapatos de la fiesta» |
@@ -467,6 +472,21 @@ Días puntuales en que la modista no atiende (feriado, viaje). Esos días no se 
 | motivo | VARCHAR(100) | solo lo ve la modista |
 
 **Usadas en:** `funciones_taller.php`, `horarios.php`, `guardar_horarios.php`, `reservar_turno.php`, `seguimiento.php`.
+
+### 30. `materiales_presupuesto`
+Tela sugerida y materiales que necesita un trabajo (los carga la modista al presupuestar). Al aceptar, la clienta elige si los trae ella o si los compra la modista; en ese caso la suma de los precios se agrega a `presupuestos.monto_total` y queda en `monto_materiales`.
+
+| Columna | Tipo | Nota |
+|---|---|---|
+| id_materiales_presupuesto | INT UNSIGNED PK | |
+| id_presupuestos | INT UNSIGNED → `presupuestos` | se borra con el presupuesto |
+| tipo | ENUM('tela','material') | la tela se muestra primero |
+| descripcion | VARCHAR(150) | ej. «Satén azul francia», «Cierre invisible 40 cm» |
+| cantidad | VARCHAR(30) | ej. «3 m», «1 u.» |
+| precio | DECIMAL(10,2) NULL | costo aproximado si lo compra la modista; NULL = a confirmar |
+| orden | TINYINT UNSIGNED | |
+
+**Usada en:** `funciones_materiales.php`, `presupuesto.php`, `guardar_presupuesto.php`, `seguimiento.php`, `responder_presupuesto.php`, `taller.php`, `modista.php`, `trabajo.php`.
 
 ## Cuenta corriente (sin tabla propia)
 La cuenta corriente de cada clienta **no tiene tabla**: se calcula con lo que ya está guardado (`funciones_cuenta.php`), así no hay datos repetidos que se puedan contradecir.

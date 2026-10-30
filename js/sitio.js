@@ -132,11 +132,12 @@
  * Mueve la fila sin parar y le da a cada foto un giro y un tamaño según
  * qué tan lejos está del centro (efecto de pared curva).
  * Se frena con el mouse encima o con el foco del teclado; se puede arrastrar.
- * Si la persona pidió "reducir movimiento", queda como fila deslizable. */
+ * Si la compu o el celular tiene activado "reducir movimiento" (en Windows:
+ * Configuración → Accesibilidad → Efectos visuales → Efectos de animación),
+ * la cinta mantiene la forma de arco pero no avanza sola: se mueve arrastrando. */
 (function () {
     var reducir = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.querySelectorAll('[data-arco]').forEach(function (arco) {
-        if (reducir) { return; }
         var pista = arco.querySelector('.arco-pista');
         var originales = Array.prototype.slice.call(pista.children);
         if (!originales.length) { return; }
@@ -157,7 +158,7 @@
         var items = Array.prototype.slice.call(pista.children);
         arco.classList.add('arco-activo');
 
-        var x = 0, velocidad = 38, pausa = false, arrastre = null, movio = false, antes = performance.now();
+        var x = 0, velocidad = reducir ? 0 : 38, pausa = false, arrastre = null, movio = false, antes = performance.now();
 
         function dibujar() {
             var mitad = arco.clientWidth / 2;

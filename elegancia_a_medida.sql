@@ -53,6 +53,7 @@
 --  27. turnos_prueba             turnos del taller (traer la prenda, pruebas, retirar)
 --  28. horarios_recepcion        horarios de la semana en que la modista recibe prendas
 --  29. dias_sin_atencion         días puntuales en que no atiende (feriados, viajes…)
+--  30. materiales_presupuesto    tela sugerida y materiales de cada presupuesto
 --
 --  EVOLUCIÓN POSTERIOR (se crea vacía; ningún archivo PHP la usa todavía)
 --  18. mensajes_contacto         formulario de contacto
@@ -82,8 +83,10 @@
 --  gastos.id_categorias_gasto                   → categorias_gasto.id_categorias_gasto
 --  avances_taller.id_solicitudes_presupuesto    → solicitudes_presupuesto.id_solicitudes_presupuesto
 --  avances_taller.id_etapas_taller              → etapas_taller.id_etapas_taller
---  turnos_prueba.id_solicitudes_presupuesto     → solicitudes_presupuesto.id_solicitudes_presupuesto
+--  turnos_prueba.id_solicitudes_presupuesto     → solicitudes_presupuesto.id_solicitudes_presupuesto (opcional)
+--  turnos_prueba.id_clientes                    → clientes.id_clientes (turnos solo para medidas)
 --  gastos.id_solicitudes_presupuesto            → solicitudes_presupuesto.id_solicitudes_presupuesto (opcional)
+--  materiales_presupuesto.id_presupuestos       → presupuestos.id_presupuestos
 -- =====================================================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -99,6 +102,7 @@ USE `elegancia_a_medida`;
 -- Se desactivan las FK solo para poder borrar en cualquier orden.
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS `materiales_presupuesto`;
 DROP TABLE IF EXISTS `dias_sin_atencion`;
 DROP TABLE IF EXISTS `horarios_recepcion`;
 DROP TABLE IF EXISTS `turnos_prueba`;
@@ -379,6 +383,10 @@ CREATE TABLE `presupuestos` (
   `recargo_porcentaje`         DECIMAL(5,2)      NOT NULL DEFAULT 0.00,
   `monto_total`                DECIMAL(10,2)     NOT NULL,
   `observaciones`              VARCHAR(500)      NOT NULL DEFAULT '',
+  `nota_materiales`            VARCHAR(255)      NOT NULL DEFAULT '' COMMENT 'Por qué sugiere esa tela o esos materiales',
+  `materiales_quien`           ENUM('','clienta','modista') NOT NULL DEFAULT ''
+                               COMMENT 'Quién consigue los materiales (lo elige la clienta al aceptar)',
+  `monto_materiales`           DECIMAL(10,2)     NOT NULL DEFAULT 0.00 COMMENT 'Sumado al total si los compra la modista',
   `fecha_respuesta_cliente`    DATETIME          NULL DEFAULT NULL COMMENT 'Cuándo el cliente aceptó o rechazó',
   `comentario_cliente`         VARCHAR(300)      NOT NULL DEFAULT '' COMMENT 'Motivo opcional al rechazar',
   `fecha_creacion`             TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -824,10 +832,11 @@ CREATE TABLE `avances_taller` (
 -- ---------------------------------------------------------------------
 CREATE TABLE `turnos_prueba` (
   `id_turnos_prueba`           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-  `id_solicitudes_presupuesto` INT UNSIGNED  NOT NULL,
+  `id_solicitudes_presupuesto` INT UNSIGNED  NULL DEFAULT NULL COMMENT 'Trabajo del turno (NULL en un turno solo para tomar medidas)',
+  `id_clientes`                INT UNSIGNED  NULL DEFAULT NULL COMMENT 'Clienta del turno para tomar medidas (sin trabajo)',
   `fecha_hora`                 DATETIME      NOT NULL,
-  `motivo`                     ENUM('prueba','traer','retirar') NOT NULL DEFAULT 'prueba'
-                               COMMENT 'prueba = probarse, traer = trae la prenda (arreglos), retirar = se prueba y retira',
+  `motivo`                     ENUM('prueba','traer','retirar','medidas') NOT NULL DEFAULT 'prueba'
+                               COMMENT 'prueba = probarse, traer = trae la prenda, retirar = se prueba y retira, medidas = solo tomar medidas',
   `tomar_medidas`              TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '1 = se aprovecha el turno para tomarle las medidas',
   `origen`                     ENUM('modista','clienta') NOT NULL DEFAULT 'modista' COMMENT 'Quién eligió el horario',
   `nota`                       VARCHAR(255)  NOT NULL DEFAULT '' COMMENT 'La ve la clienta',
@@ -837,11 +846,15 @@ CREATE TABLE `turnos_prueba` (
   PRIMARY KEY (`id_turnos_prueba`),
   KEY `idx_turnos_prueba_fecha` (`estado`, `fecha_hora`),
   KEY `idx_turnos_prueba_solicitud` (`id_solicitudes_presupuesto`),
+  KEY `idx_turnos_prueba_cliente` (`id_clientes`),
   CONSTRAINT `fk_turnos_prueba_solicitud`
       FOREIGN KEY (`id_solicitudes_presupuesto`) REFERENCES `solicitudes_presupuesto` (`id_solicitudes_presupuesto`)
+      ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_turnos_prueba_cliente`
+      FOREIGN KEY (`id_clientes`) REFERENCES `clientes` (`id_clientes`)
       ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
-  COMMENT='Turnos del taller: pruebas, traer la prenda y retirar el trabajo';
+  COMMENT='Turnos del taller: traer la prenda, pruebas, retirar y tomar medidas';
 
 
 -- ---------------------------------------------------------------------
@@ -870,6 +883,29 @@ CREATE TABLE `dias_sin_atencion` (
   PRIMARY KEY (`fecha`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
   COMMENT='Días en que la modista no atiende';
+
+
+-- ---------------------------------------------------------------------
+-- 30. materiales_presupuesto — tela sugerida y materiales que necesita
+--     el trabajo (cierre, botones, entretela…). La clienta elige al
+--     aceptar si los trae ella o si los compra la modista (se suma al total).
+-- ---------------------------------------------------------------------
+CREATE TABLE `materiales_presupuesto` (
+  `id_materiales_presupuesto` INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  `id_presupuestos`           INT UNSIGNED     NOT NULL,
+  `tipo`                      ENUM('tela','material') NOT NULL DEFAULT 'material',
+  `descripcion`               VARCHAR(150)     NOT NULL COMMENT 'Ej: Satén azul, Cierre invisible 40 cm',
+  `cantidad`                  VARCHAR(30)      NOT NULL DEFAULT '' COMMENT 'Ej: 3 m, 6 u.',
+  `precio`                    DECIMAL(10,2)    NULL DEFAULT NULL COMMENT 'Costo aproximado si lo compra la modista; NULL = a confirmar',
+  `orden`                     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id_materiales_presupuesto`),
+  KEY `idx_materiales_presupuesto` (`id_presupuestos`, `orden`),
+  CONSTRAINT `fk_materiales_presupuesto`
+      FOREIGN KEY (`id_presupuestos`) REFERENCES `presupuestos` (`id_presupuestos`)
+      ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `chk_materiales_precio` CHECK (`precio` IS NULL OR `precio` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+  COMMENT='Tela sugerida y materiales de cada presupuesto';
 
 
 -- =====================================================================
@@ -1060,13 +1096,13 @@ INSERT INTO `presupuestos`
    `recargo_porcentaje`, `monto_total`, `observaciones`)
 VALUES
   (3, 3, 85000.00, CURDATE() + INTERVAL 40 DAY, 40, 0.00, 85000.00,
-   'Incluye dos pruebas. La tela la aporta la clienta.');
+   'Incluye dos pruebas.');
 
 INSERT INTO `notificaciones`
   (`id_solicitudes_presupuesto`, `id_estados_solicitud`, `titulo`, `mensaje`)
 VALUES
   (3, 6, 'Tu presupuesto está listo',
-   'Trabajo: conjunto top y falda. Total: $ 85.000,00. Entrega estimada: en 40 días. Incluye dos pruebas. La tela la aporta la clienta.');
+   'Trabajo: conjunto top y falda. Total: $ 85.000,00. Entrega estimada: en 40 días. Incluye dos pruebas.');
 
 -- Horarios en que la modista recibe prendas: lunes a viernes por la mañana
 -- y por la tarde, y sábados a la mañana (se cambian en Taller → Horarios).
@@ -1077,3 +1113,14 @@ SELECT d.dia, h.hora
              UNION SELECT '17:00:00' UNION SELECT '17:30:00' UNION SELECT '18:00:00' UNION SELECT '18:30:00') h
 UNION ALL
 SELECT 6, h.hora FROM (SELECT '10:00:00' AS hora UNION SELECT '10:30:00' UNION SELECT '11:00:00' UNION SELECT '11:30:00') h;
+
+-- Tela sugerida y materiales del presupuesto de Sofía (conjunto de egresados)
+UPDATE `presupuestos` SET `nota_materiales` = 'El satén cae muy bien en la falda larga y no se arruga en la foto.'
+ WHERE `id_solicitudes_presupuesto` = 3;
+INSERT INTO `materiales_presupuesto` (`id_presupuestos`, `tipo`, `descripcion`, `cantidad`, `precio`, `orden`)
+SELECT p.id_presupuestos, m.tipo, m.descripcion, m.cantidad, m.precio, m.orden
+  FROM presupuestos p
+ CROSS JOIN (SELECT 'tela' AS tipo, 'Satén azul francia' AS descripcion, '3 m' AS cantidad, 27000.00 AS precio, 1 AS orden
+             UNION ALL SELECT 'material', 'Cierre invisible 40 cm', '1 u.', 1800.00, 2
+             UNION ALL SELECT 'material', 'Entretela para el top', '0,5 m', 2500.00, 3) m
+ WHERE p.id_solicitudes_presupuesto = 3;

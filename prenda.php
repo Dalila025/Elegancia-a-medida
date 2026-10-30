@@ -89,7 +89,7 @@ function opcion_compra(array $p, string $modalidad, array $talles = [], ?array $
                         </label>
                     <?php endforeach; ?>
                     <?php if ($modalidad === 'venta'): ?>
-                        <label class="chip-talle <?= $puede_medida ? '' : 'deshabilitado' ?>" title="<?= $puede_medida ? 'Se confecciona con tus medidas' : 'Primero cargá tus medidas' ?>">
+                        <label class="chip-talle <?= $puede_medida ? '' : 'deshabilitado' ?>" title="<?= $puede_medida ? 'Se confecciona con tus medidas' : 'Primero pasá por el taller a que te tomen las medidas' ?>">
                             <input type="radio" name="talle" value="<?= e(TALLE_A_MEDIDA) ?>" <?= $puede_medida ? '' : 'disabled' ?>>
                             <span><?= e(TALLE_A_MEDIDA) ?></span>
                         </label>
@@ -146,9 +146,10 @@ function opcion_compra(array $p, string $modalidad, array $talles = [], ?array $
                     <div class="mi-talle" id="elegir-talle">
                         <?php if (!$cliente): ?>
                             <p><strong>¿Cuál es tu talle?</strong> Elegí por medidas, no por edad.
-                               <a href="login.php?volver=<?= e(urlencode('mis_medidas.php?volver=' . urlencode('prenda.php?id=' . $id))) ?>">Iniciá sesión y cargá tus medidas</a> y te decimos qué talle te queda.</p>
+                               <a href="login.php?volver=<?= e(urlencode('mis_medidas.php')) ?>">Iniciá sesión y pedí turno</a>: la modista te toma las medidas en el taller y después te decimos qué talle te queda.</p>
                         <?php elseif (!$medidas): ?>
-                            <p><strong>¿Cuál es tu talle?</strong> <a href="mis_medidas.php?volver=<?= e(urlencode('prenda.php?id=' . $id)) ?>">Cargá tus medidas</a> (busto, cintura, cadera…) y te recomendamos el talle.</p>
+                            <p><strong>¿Cuál es tu talle?</strong> Pasá por el taller y la modista te toma las medidas (busto, cintura, cadera…). Después, en cada prenda te recomendamos el talle.</p>
+                            <p class="mi-talle-pie"><a href="mis_medidas.php#turno-medidas">Pedir turno para medirme</a> · mientras tanto, guiate con la tabla de abajo.</p>
                         <?php elseif ($recom): ?>
                             <p class="mi-talle-titulo">Según tus medidas, tu talle es <strong><?= e($recom['talle']) ?></strong></p>
                             <?php if ($recom['avisos']): ?>
@@ -159,9 +160,9 @@ function opcion_compra(array $p, string $modalidad, array $talles = [], ?array $
                             <?php if ($recom['sugerir_medida'] && (int) $p['en_venta'] === 1): ?>
                                 <p><strong>Te recomendamos pedirla «A medida»:</strong> la modista la confecciona con tus medidas.</p>
                             <?php endif; ?>
-                            <p class="mi-talle-pie">Comparado con tus medidas del <?= (new DateTime($medidas['fecha_carga']))->format('d/m/Y') ?>. <a href="mis_medidas.php?volver=<?= e(urlencode('prenda.php?id=' . $id)) ?>">Actualizar mis medidas</a></p>
+                            <p class="mi-talle-pie">Comparado con tus medidas del <?= (new DateTime($medidas['fecha_carga']))->format('d/m/Y') ?>. <a href="mis_medidas.php#turno-medidas">¿Cambiaron? Pedí turno para medirte de nuevo</a></p>
                         <?php else: ?>
-                            <p>Tus medidas no alcanzan para comparar con esta guía. <a href="mis_medidas.php?volver=<?= e(urlencode('prenda.php?id=' . $id)) ?>">Completá tus medidas</a>.</p>
+                            <p>Tus medidas no alcanzan para comparar con esta guía. <a href="mis_medidas.php#turno-medidas">Pedí turno y te las completamos en el taller</a>.</p>
                         <?php endif; ?>
 
                         <details class="guia-talles-cliente" <?= $cliente && !$medidas ? 'open' : '' ?>>

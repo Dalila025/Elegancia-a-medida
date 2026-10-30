@@ -62,7 +62,7 @@ try {
 
     // Bloquea la fila mientras se responde (por si la modista la está editando).
     $stmt = $pdo->prepare(
-        'SELECT s.id_solicitudes_presupuesto, s.id_estados_solicitud,
+        'SELECT s.id_solicitudes_presupuesto, s.id_estados_solicitud, p.id_presupuestos,
                 p.monto_total, p.fecha_entrega, p.observaciones, p.fecha_creacion, p.fecha_actualizacion
            FROM solicitudes_presupuesto s
            INNER JOIN presupuestos p ON p.id_solicitudes_presupuesto = s.id_solicitudes_presupuesto
@@ -92,6 +92,25 @@ try {
     $id     = (int) $sol['id_solicitudes_presupuesto'];
     $nuevo  = $accion === 'aceptar' ? ESTADO_EN_PROCESO : ESTADO_NO_ACEPTADO;
 
+    // Materiales: si el presupuesto los tiene, la clienta elige quién los consigue.
+    // Si los compra la modista, el costo se suma al total del trabajo.
+    if ($accion === 'aceptar') {
+        $materiales = materiales_de($pdo, (int) $sol['id_presupuestos']);
+        $quien = isset($_POST['materiales_quien']) && is_string($_POST['materiales_quien']) ? $_POST['materiales_quien'] : '';
+        if ($materiales && !isset(MATERIALES_QUIEN[$quien])) {
+            $pdo->rollBack();
+            volver_detalle($codigo, 'error', 'Elegí quién consigue los materiales: si los traés vos o si los compra la modista.');
+        }
+        if ($materiales) {
+            [$total_mat] = total_materiales($materiales);
+            $extra = $quien === 'modista' ? $total_mat : 0.0;
+            $pdo->prepare('UPDATE presupuestos SET materiales_quien = :q, monto_materiales = :m, monto_total = monto_total + :m2
+                            WHERE id_presupuestos = :id')
+                ->execute([':q' => $quien, ':m' => number_format($extra, 2, '.', ''), ':m2' => number_format($extra, 2, '.', ''),
+                           ':id' => $sol['id_presupuestos']]);
+        }
+    }
+
     $pdo->prepare('UPDATE solicitudes_presupuesto SET id_estados_solicitud = :nuevo
                     WHERE id_solicitudes_presupuesto = :id AND id_estados_solicitud = :actual')
         ->execute([':nuevo' => $nuevo, ':id' => $id, ':actual' => ESTADO_PRESUPUESTADO]);
@@ -114,6 +133,7 @@ volver_detalle(
     $codigo,
     'ok',
     $accion === 'aceptar'
-        ? '¡Listo! Aceptaste el presupuesto. Ahora elegí qué día acercarte al taller.'
+        ? '¡Listo! Aceptaste el presupuesto. Ahora elegí qué día acercarte al taller'
+          . (($quien ?? '') === 'clienta' ? ' (y llevá los materiales)' : '') . '.'
         : 'Registramos que no aceptaste el presupuesto. ¡Gracias por avisarnos!'
 );

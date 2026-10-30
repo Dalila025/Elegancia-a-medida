@@ -1,0 +1,8 @@
+# Elegancia a Medida — protección básica en el hosting (Apache)
+# No mostrar la lista de archivos de una carpeta
+Options -Indexes
+
+# No dejar descargar la base de datos, la documentación ni archivos sueltos
+<FilesMatch "\.(sql|md|log|zip|bak)$">
+    Require all denied
+</FilesMatch>

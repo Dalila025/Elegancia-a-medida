@@ -472,3 +472,27 @@ td .turno-modista { max-width: 210px; min-width: 180px; }
 .tc-siguiente button { width: 100%; background: #231f20; color: #fff; border: 0; border-radius: 999px; padding: 8px 12px; font-weight: 700; font-size: .85rem; cursor: pointer; }
 .tc-siguiente button:hover, .tc-siguiente button:focus-visible { background: #9c5f68; }
 .tc-fin { margin: 8px 0 0; font-size: .78rem; color: #1f6b3a; font-weight: 600; }
+
+/* Presupuesto: tela sugerida y materiales */
+.materiales-form { border: 1px solid #eee3d3; border-radius: 12px; padding: 12px 14px; margin: 14px 0; background: #fffaf3; }
+.materiales-form legend { font-weight: 700; padding: 0 6px; }
+.materiales-form .opcional { font-weight: 400; color: #8a817d; font-size: .85rem; }
+.tabla-materiales { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.tabla-materiales th { text-align: left; font-size: .78rem; color: #6b6461; padding: 4px; }
+.tabla-materiales td { padding: 3px 4px; }
+.tabla-materiales input, .tabla-materiales select { width: 100%; box-sizing: border-box; padding: 6px 8px; font-size: .88rem; }
+.tabla-materiales td:first-child { width: 110px; }
+.tabla-materiales td:nth-child(3) { width: 100px; }
+.tabla-materiales td:nth-child(4) { width: 130px; }
+.mat-panel { margin-top: 6px; font-size: .78rem; color: #6b4a1e; white-space: normal; }
+.tc-materiales { margin: 6px 0 0; font-size: .78rem; color: #6b4a1e; background: #fbf3e6; border-radius: 8px; padding: 5px 8px; }
+.mat-panel { display: block; background: #fbf3e6; border-radius: 8px; padding: 5px 8px; }
+.materiales-pregunta { border: 0; padding: 0; margin: 14px 0 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.materiales-pregunta legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+.materiales-pregunta label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 2px solid #eadfce; border-radius: 12px; background: #fff; cursor: pointer; }
+.materiales-pregunta label:has(input:checked) { border-color: #9c5f68; background: #fbf2f3; }
+.materiales-pregunta input { margin-top: 3px; }
+.materiales-pregunta span { display: flex; flex-direction: column; gap: 2px; }
+.materiales-pregunta small { color: #6b6461; font-size: .82rem; }
+.materiales-form[hidden] { display: none; }
+@media (max-width: 640px) { .materiales-pregunta { grid-template-columns: 1fr; } }

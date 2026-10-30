@@ -120,7 +120,7 @@ function boton_item(int $id, string $accion, string $texto, string $clase, strin
                             <h3><a href="prenda.php?id=<?= (int) $it['id_productos'] ?>"><?= e($it['nombre']) ?></a></h3>
                             <span class="modo-et <?= $it['modalidad'] ?>"><?= $it['modalidad'] === 'alquiler' ? 'Alquiler' : 'Venta' ?></span>
                             <?php if ($it['talle'] !== ''): ?><span class="item-talle"><?= e(texto_talle($it['talle'])) ?></span><?php endif; ?>
-                            <?php if ($it['talle'] === TALLE_A_MEDIDA): ?><span class="item-medidas">Se confecciona con <a href="mis_medidas.php">tus medidas</a>.</span><?php endif; ?>
+                            <?php if ($it['talle'] === TALLE_A_MEDIDA): ?><span class="item-medidas">Se confecciona con <a href="mis_medidas.php">tus medidas</a> tomadas en el taller.</span><?php endif; ?>
                             <?php if ($ok): ?>
                                 <div class="precio-u"><?= $it['precio'] === null ? 'Precio a consultar' : e(pesos($it['precio'])) . ' c/u' ?></div>
                             <?php else: ?>

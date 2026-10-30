@@ -34,6 +34,7 @@ try {
             'SELECT s.id_solicitudes_presupuesto, s.codigo_seguimiento, s.tipo_prenda, s.descripcion,
                     s.fecha_requerida, s.fecha_solicitud, s.id_estados_solicitud, s.id_tipos_servicio, t.nombre AS servicio,
                     p.id_presupuestos, p.monto_total, p.fecha_entrega, p.observaciones, p.fecha_creacion, p.fecha_actualizacion,
+                    p.nota_materiales, p.materiales_quien, p.monto_materiales,
                     p.fecha_respuesta_cliente, p.comentario_cliente
                FROM solicitudes_presupuesto s
                INNER JOIN tipos_servicio t ON t.id_tipos_servicio = s.id_tipos_servicio
@@ -161,7 +162,17 @@ $pagina_actual = 'mis';
                         <dt>Tu comentario</dt>
                         <dd><?= e($sol['comentario_cliente']) ?></dd>
                     <?php endif; ?>
+                    <?php if ((float) $sol['monto_materiales'] > 0): ?>
+                        <dt>Incluye materiales</dt>
+                        <dd><?= e(pesos((float) $sol['monto_materiales'])) ?> (los compra la modista)</dd>
+                    <?php endif; ?>
                 </dl>
+                <?php
+                // Tela sugerida y materiales (funciones_materiales.php)
+                $materiales_s = materiales_de($pdo, (int) $sol['id_presupuestos']);
+                mostrar_materiales($materiales_s, (string) $sol['nota_materiales'], (string) $sol['materiales_quien']);
+                [$total_mat, $mat_sin_precio] = total_materiales($materiales_s);
+                ?>
 
                 <?php if ($puede_responder): ?>
                     <div class="responder">
@@ -180,6 +191,15 @@ $pagina_actual = 'mis';
                                     <input type="hidden" name="codigo" value="<?= e($codigo) ?>">
                                     <input type="hidden" name="version" value="<?= e(version_presupuesto($sol)) ?>">
                                     <input type="hidden" name="accion" value="aceptar">
+                                    <?php if ($materiales_s): ?>
+                                        <fieldset class="mat-elegir">
+                                            <legend>¿Quién consigue los materiales?</legend>
+                                            <label><input type="radio" name="materiales_quien" value="clienta" required>
+                                                <span><strong>Los traigo yo</strong><small>Los comprás donde quieras y los llevás el día que vas al taller.</small></span></label>
+                                            <label><input type="radio" name="materiales_quien" value="modista" required>
+                                                <span><strong>Que los compre la modista</strong><small>Se suman <?= e(pesos($total_mat)) ?> al total<?= $mat_sin_precio ? ' (más lo que quede a confirmar)' : '' ?>: <?= e(pesos((float) $sol['monto_total'] + $total_mat)) ?>.</small></span></label>
+                                        </fieldset>
+                                    <?php endif; ?>
                                     <button type="submit" class="btn btn-aceptar">Aceptar presupuesto</button>
                                 </form>
                             <?php endif; ?>
@@ -242,6 +262,10 @@ $pagina_actual = 'mis';
                     if ($motivo_elige && $tt['motivo'] === $motivo_elige && $tt['estado'] === 'programado' && $tt['fecha_hora'] >= date('Y-m-d 00:00:00')) { $turno_elegible = $tt; }
                 }
                 $libres_t = $motivo_elige ? horarios_libres($pdo) : [];
+                // Si eligió traer los materiales, se lo recordamos para el día que va al taller
+                $mat_t = materiales_de_solicitud($pdo, (int) $sol['id_solicitudes_presupuesto']);
+                $traer_mat = $mat_t['quien'] === 'clienta' && $mat_t['filas']
+                    ? implode(', ', array_map('texto_material', $mat_t['filas'])) : '';
                 $saldo_t  = $motivo_elige === 'retirar' ? saldo_trabajo($pdo, (int) $sol['id_solicitudes_presupuesto']) : 0.0;
                 $wa_modista = fn(?array $turno) => enlace_whatsapp($sitio_t['whatsapp'] ?? '',
                     wa_clienta_a_modista($cliente['nombre'], $sol['tipo_prenda'], $sol['codigo_seguimiento'], (string) $motivo_elige, $turno));
@@ -259,6 +283,7 @@ $pagina_actual = 'mis';
                                 ? 'Llevale la prenda a la modista: ese día te la probás para marcar el arreglo y te toma las medidas.'
                                 : 'Pasá por el taller: la modista te toma las medidas y charlan los detalles de tu ' . prenda_en_frase($sol['tipo_prenda']) . '.') ?>
                                 Si querés, ese día también podés dejar la seña.</p>
+                            <?php if ($traer_mat !== ''): ?><p class="ps-materiales">🧵 Llevá también los materiales: <strong><?= e($traer_mat) ?></strong>.</p><?php endif; ?>
                         <?php endif; ?>
                         <?php if ($libres_t): ?>
                             <?php mostrar_selector_turno($libres_t, $codigo, '¡Reservar este horario!'); ?>
@@ -279,6 +304,7 @@ $pagina_actual = 'mis';
                             <?php if ($prox['motivo'] === 'traer'): ?><br><span><?= $es_arreglo_t ? 'Ese día te la probás para marcar el arreglo.' : 'Ese día charlamos los detalles de tu trabajo.' ?></span><?php endif; ?>
                             <?php if ($prox['motivo'] === 'retirar'): ?><br><span>Te la probás y, si te queda bien, te la llevás.<?= $saldo_t > 0 ? ' Saldo a pagar: ' . e(pesos($saldo_t)) . '.' : '' ?></span><?php endif; ?>
                             <?php if ((int) $prox['tomar_medidas'] === 1): ?><br><span>📏 <?= e(TURNO_TEXTO_MEDIDAS) ?></span><?php endif; ?>
+                            <?php if ($prox['motivo'] === 'traer' && $traer_mat !== ''): ?><br><span>🧵 Llevá también: <?= e($traer_mat) ?>.</span><?php endif; ?>
                             <?php if ($prox['motivo'] === 'traer' && $motivo_elige === 'traer'): ?><br><span>💳 Si querés, ese día podés dejar la seña (o pagarla antes desde acá con Mercado Pago).</span><?php endif; ?>
                             <?php if ($prox['nota'] !== ''): ?><br><span><?= e($prox['nota']) ?></span><?php endif; ?>
                             <?php if ($puede_cambiar): ?>
